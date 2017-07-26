@@ -1,0 +1,12 @@
+
+TVDB_APIKEY = '1234567890ABCDEF'
+TVDB_USERKEY = '1234567890ABCDEF'
+TVDB_USERNAME = 'user.name'
+
+DBHOST = 'localhost'
+DBPORT = '5432'
+DBNAME = 'tvschedule'
+DBUSER = 'postgres'
+DBPASS = 'password'
+
+SECRETKEY = 'ictackCaugyotnatboovUst$wrekHalvOcafBiuvIpIcikbueGibKeybryes'
