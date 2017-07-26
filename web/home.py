@@ -42,7 +42,8 @@ def check_for_episodes():
 				cursor.execute("""SELECT * FROM episode WHERE tvdb_id = %s""", (r['id'],))
 				if cursor.rowcount <= 0:
 					print('Adding new episode...')
-					qry = """INSERT INTO episode (tvshowid, seasonnumber, episodenumber, name, airdate, tvdb_id) VALUES (%s, %s, %s, %s, %s, %s)"""
+					# add 1 day to account for US airdates compared to NZ airdates
+					qry = """INSERT INTO episode (tvshowid, seasonnumber, episodenumber, name, airdate, tvdb_id) VALUES (%s, %s, %s, %s, %s + '1 day'::INTERVAL, %s)"""
 					qargs = (s['id'], r['airedSeason'], r['airedEpisodeNumber'], r['episodeName'], r['firstAired'], r['id'],)
 					cursor.execute(qry, qargs)
 				else:
