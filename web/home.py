@@ -52,9 +52,8 @@ def schedule():
 @home.route('/shows', methods=['GET'])
 @login_required
 def shows():
-	get_posters()
 	cursor = g.conn.cursor()
-	cursor.execute("""SELECT * FROM tvshow""")
+	cursor.execute("""SELECT * FROM tvshow WHERE adminid=%s ORDER BY name ASC""", (session['userid'],))
 	tvshows = cursor.fetchall()
 	cursor.close()
 	return render_template('shows.html', tvshows=tvshows)
@@ -113,21 +112,30 @@ def import_showlist():
 			raise Exception('Invalid input.')
 		else:
 			tvdb_id = resp[int(choice)-1]['id']
-		cursor.execute("""INSERT INTO tvshow (name, tvdb_id) VALUES (%s, %s)""", (line, tvdb_id,))
+		cursor.execute("""INSERT INTO tvshow (name, tvdb_id, adminid) VALUES (%s, %s, %s)""", (line, tvdb_id, session['userid'],))
+		fetch_poster(tvdb_id)
 	g.conn.commit()
 	cursor.close()
 
 
 def get_posters():
 	cursor = g.conn.cursor()
-	cursor.execute("""SELECT * FROM tvshow LIMIT 1""")
+	cursor.execute("""SELECT * FROM tvshow""")
 	shows = cursor.fetchall()
+	cursor.close()
 	for s in shows:
-		resp = tvdb.image_search(s['tvdb_id'])
+		fetch_poster(s['tvdb_id'])
+
+
+def fetch_poster(tvdb_id):
+	if not os.path.exists(get_file_location('/static/images/poster_%s.jpg' % tvdb_id)):
+		resp = tvdb.image_search(tvdb_id)
 		if len(resp) > 0:
 			top_poster = resp[0]
 			for r in resp:
 				if r['ratingsInfo']['average'] > top_poster['ratingsInfo']['average']:
 					top_poster = r
-		urlretrieve('http://thetvdb.com/banners/%s' % top_poster['fileName'], get_file_location('/static/images/poster_%s.jpg' % s['id']))
-	cursor.close()
+		urlretrieve('http://thetvdb.com/banners/%s' % top_poster['fileName'], get_file_location('/static/images/poster_%s.jpg' % tvdb_id))
+		img = Image.open(get_file_location('/static/images/poster_%s.jpg' % tvdb_id))
+		img_scaled = img.resize((int(img.size[0]/2),int(img.size[1]/2)), Image.ANTIALIAS)
+		img_scaled.save(get_file_location('/static/images/poster_%s.jpg' % tvdb_id), optimize=True, quality=95)

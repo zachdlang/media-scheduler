@@ -4,6 +4,7 @@ from functools import wraps
 import json
 import requests
 from urllib.request import urlretrieve
+from PIL import Image
 import psycopg2, psycopg2.extras
 import datetime
 import os

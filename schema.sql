@@ -2,7 +2,8 @@
 CREATE TABLE IF NOT EXISTS tvshow (
 	id SERIAL primary key,
 	name TEXT NOT NULL,
-	tvdb_id INTEGER NOT NULL
+	tvdb_id INTEGER NOT NULL,
+	adminid INTEGER NOT NULL REFERENCES admin(id)
 )WITH OIDS;
 
 CREATE TABLE IF NOT EXISTS episode (
