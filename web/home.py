@@ -12,20 +12,52 @@ def index():
 
 @home.route('/login', methods=['GET','POST'])
 def login():
-	check_for_episodes()
 	if is_logged_in():
 		return redirect(url_for('home.schedule'))
 
 	if request.method == 'POST':
-		pass
+		params = params_to_dict(request.form)
+		cursor = g.conn.cursor()
+		cursor.execute("""SELECT * FROM admin WHERE TRIM(username) = TRIM(%s)""", (params['username'],))
+		resp = cursor.fetchone()
+		ok, new_hash = g.passwd_context.verify_and_update(params['password'].strip(), resp['password'].strip())
+		if ok:
+			if new_hash:
+				cursor.execute("""UPDATE admin SET password = %s WHERE id = %s""", (new_hash, resp['id'],))
+				g.conn.commit()
+			session['userid'] = resp['id']
+		cursor.close()
+			
+		if ok:
+			return redirect(url_for('home.schedule'))
+		else:
+			flash('Login failed.', 'danger')
+			return redirect(url_for('home.index'))
 
 	return render_template('login.html')
+
+
+@home.route('/logout', methods=['GET'])
+def logout():
+	session.pop('userid', None)
+	return redirect(url_for('home.index'))
 
 
 @home.route('/schedule', methods=['GET'])
 @login_required
 def schedule():
 	return render_template('schedule.html')
+
+
+@home.route('/shows', methods=['GET'])
+@login_required
+def shows():
+	get_posters()
+	cursor = g.conn.cursor()
+	cursor.execute("""SELECT * FROM tvshow""")
+	tvshows = cursor.fetchall()
+	cursor.close()
+	return render_template('shows.html', tvshows=tvshows)
 
 
 def check_for_episodes():
@@ -83,4 +115,19 @@ def import_showlist():
 			tvdb_id = resp[int(choice)-1]['id']
 		cursor.execute("""INSERT INTO tvshow (name, tvdb_id) VALUES (%s, %s)""", (line, tvdb_id,))
 	g.conn.commit()
+	cursor.close()
+
+
+def get_posters():
+	cursor = g.conn.cursor()
+	cursor.execute("""SELECT * FROM tvshow LIMIT 1""")
+	shows = cursor.fetchall()
+	for s in shows:
+		resp = tvdb.image_search(s['tvdb_id'])
+		if len(resp) > 0:
+			top_poster = resp[0]
+			for r in resp:
+				if r['ratingsInfo']['average'] > top_poster['ratingsInfo']['average']:
+					top_poster = r
+		urlretrieve('http://thetvdb.com/banners/%s' % top_poster['fileName'], get_file_location('/static/images/poster_%s.jpg' % s['id']))
 	cursor.close()

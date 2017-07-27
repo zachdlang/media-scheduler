@@ -13,6 +13,8 @@ def login():
 
 
 def tvdb_request(url, params):
+	if 'tvdb_token' not in session:
+		login()
 	headers = { 'content-type':'application/json', 'Authorization':'Bearer %s' % session['tvdb_token'] }
 	r = requests.get(url, params=params, headers=headers).text
 	resp = json.loads(r)
@@ -45,4 +47,10 @@ def episode_search(tvshow_tvdb_id, airdate):
 			resp = { 'data':[] }
 		else:
 			raise
+	return resp['data']
+
+
+def image_search(tvshow_tvdb_id):
+	params = { 'keyType':'poster' }
+	resp = tvdb_request('https://api.thetvdb.com/series/%s/images/query' % tvshow_tvdb_id, params)
 	return resp['data']
