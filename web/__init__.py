@@ -2,6 +2,7 @@
 from web.utility import *
 from passlib.context import CryptContext
 from web.home import home
+from web.shows import shows
 
 app = Flask(__name__)
 
@@ -9,6 +10,7 @@ app.config.from_pyfile('site_config.cfg')
 app.secret_key = app.config['SECRETKEY']
 
 app.register_blueprint(home, url_prefix='')
+app.register_blueprint(shows, url_prefix='/shows')
 
 app.jinja_env.globals.update(is_logged_in=is_logged_in)
 
@@ -23,3 +25,6 @@ def before_request():
 			cursor_factory=psycopg2.extras.DictCursor)
 	g.passwd_context = CryptContext().from_path(get_file_location('/passlibconfig.ini'))
 	g.config = app.config
+
+if __name__ == '__main__':
+	app.run()

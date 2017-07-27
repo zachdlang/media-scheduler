@@ -13,9 +13,10 @@
 			 <div class="header clearfix">
 				<nav>
 					<ul class="nav nav-pills pull-right">
-						<li role="presentation"><a href="{{ url_for('home.schedule') }}">Home</a></li>
+						<li role="presentation"><a href="{{ url_for('shows.schedule') }}">Home</a></li>
 						{% if is_logged_in() %}
-						<li role="presentation"><a href="{{ url_for('home.shows') }}">Shows</a></li>
+						<li role="presentation"><a href="{{ url_for('shows.schedule') }}">Schedule</a></li>
+						<li role="presentation"><a href="{{ url_for('shows.list') }}">Shows</a></li>
 						{% endif %}
 					</ul>
 				</nav>
@@ -23,9 +24,12 @@
 			</div>
 
 			<div class="row">
-				{% for category, message in get_flashed_messages(with_categories=true) %}
-					<div class="alert alert-{{ category }} alert-dismissable"><button type="button" class="close" data-dismiss="alert" aria-hidden="true">&times;</button>{{ message }}</div>
-				{% endfor %}
+				<div id="loader" class="hidden"></div> 
+				<div id="flash_div">
+					{% for category, message in get_flashed_messages(with_categories=true) %}
+						<div class="alert alert-{{ category }} alert-dismissable"><button type="button" class="close" data-dismiss="alert" aria-hidden="true">&times;</button>{{ message }}</div>
+					{% endfor %}
+				</div>
 				{% block content %}
 				{% endblock %}
 			</div>
@@ -37,6 +41,28 @@
 
 		<script src="{{ url_for('static', filename='js/jquery.min.js') }}"></script>
 		<script src="{{ url_for('static', filename='js/bootstrap.min.js') }}"></script>
+
+		<script>
+			$(document).ajaxStart(function() {
+				console.log('startting');
+				$('#loader').removeClass('hidden');
+			});
+
+			$(document).ajaxStop(function() {
+				$('#loader').addClass('hidden');
+			});
+
+			function handle_internal_error() {
+				show_flash('Internal error occurred.', 'danger');
+			}
+
+			function show_flash(message, flash_class) {
+				if ($('.modal.in').length) elem = $('#modal_flash_div');
+				else elem = $('#flash_div');
+				elem.empty();
+				elem.html('<div class="alert alert-'+flash_class+' alert-dismissable"><button type="button" class="close" data-dismiss="alert" aria-hidden="true">&times;</button>'+message+'</div>');
+			}
+		</script>
 
 		{% block script %}
 		{% endblock %}

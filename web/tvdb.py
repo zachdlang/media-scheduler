@@ -2,9 +2,18 @@
 from web.utility import *
 
 
+def get_headers():
+	headers = { 
+		'Content-Type':'application/json', 
+		'Accept':'application/json', 
+		'User-Agent':'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_11_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/50.0.2661.102 Safari/537.36'
+	}
+	return headers
+
+
 def login():
 	data = { 'apikey':g.config['TVDB_APIKEY'], 'userkey':g.config['TVDB_USERKEY'], 'username':g.config['TVDB_USERNAME'] }
-	headers = { 'content-type':'application/json' }
+	headers = get_headers()
 	r = requests.post('https://api.thetvdb.com/login', data=json.dumps(data), headers=headers).text
 	resp = json.loads(r)
 	if 'Error' in resp:
@@ -15,14 +24,15 @@ def login():
 def tvdb_request(url, params):
 	if 'tvdb_token' not in session:
 		login()
-	headers = { 'content-type':'application/json', 'Authorization':'Bearer %s' % session['tvdb_token'] }
+	headers = get_headers()
+	headers['Authorization'] = 'Bearer %s' % session['tvdb_token']
 	r = requests.get(url, params=params, headers=headers).text
 	resp = json.loads(r)
 	if 'Error' in resp:
 		if resp['Error'] == 'Not Authorized':
 			login()
 			# Refresh token and try again
-			headers = { 'content-type':'application/json', 'Authorization':'Bearer %s' % session['tvdb_token'] }
+			headers['Authorization'] = 'Bearer %s' % session['tvdb_token']
 			r = requests.get(url, params=params, headers=headers).text
 			resp = json.loads(r)
 			if 'Error' in resp:
