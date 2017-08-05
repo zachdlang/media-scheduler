@@ -12,7 +12,7 @@ def schedule():
 	qry = """SELECT e.*,
 				s.name AS show_name,
 				s.tvdb_id AS show_tvdb_id, 
-				to_char(e.airdate, 'DD/MM/YYYY') AS airdate_str, 
+				to_char(e.airdate, 'Day DD/MM/YYYY') AS airdate_str, 
 				e.airdate < current_date AS in_past 
 			FROM episode e
 			LEFT JOIN tvshow s ON (s.id = e.tvshowid)
@@ -30,26 +30,54 @@ def schedule():
 	return render_template('schedule.html', outstanding=outstanding, dates=dates, episodes=episodes)
 
 
-@shows.route('/schedule/update')
+@shows.route('/schedule/watched', methods=['POST'])
+@login_required
+def schedule_watched():
+	error = None
+	params = params_to_dict(request.form)
+	episodeid = params.get('episodeid')
+	if episodeid:
+		cursor = g.conn.cursor()
+		try:
+			cursor.execute("""SELECT mark_episode_watched(%s, %s)""", (session['userid'], episodeid,))
+			g.conn.commit()
+		except psycopg2.DatabaseError:
+			g.conn.rollback()
+			cursor.close()
+			raise
+		cursor.close()
+	else:
+		error = 'Please select an episode.'
+	return jsonify(error=error)
+
+
+@shows.route('/schedule/update', methods=['GET','POST'])
 def schedule_update():
 	error = None
 	cursor = g.conn.cursor()
 	cursor.execute("""SELECT * FROM tvshow ORDER BY name ASC""")
 	tvshows = query_to_dict_list(cursor)
-	# minus 1 day to account for US airdates compared to NZ airdates
-	airdate = (datetime.datetime.today() - datetime.timedelta(days=1)).strftime('%Y-%m-%d')
-	for s in tvshows:
-		resp = tvdb.episode_search(s['tvdb_id'], airdate)
-		if resp:
-			print('Found for %s' % s['name'])
-			for r in resp:
-				cursor.execute("""SELECT * FROM episode WHERE tvdb_id = %s""", (r['id'],))
-				if cursor.rowcount <= 0:
-					# add 1 day to account for US airdates compared to NZ airdates
-					qry = """INSERT INTO episode (tvshowid, seasonnumber, episodenumber, name, airdate, tvdb_id) VALUES (%s, %s, %s, %s, (%s::DATE + '1 day'::INTERVAL), %s) RETURNING id"""
-					qargs = (s['id'], r['airedSeason'], r['airedEpisodeNumber'], r['episodeName'], r['firstAired'], r['id'],)
-					cursor.execute(qry, qargs)
-	g.conn.commit()
+	for n in range(0, 7):
+		# minus 1 day to account for US airdates compared to NZ airdates
+		airdate = (datetime.datetime.today() + datetime.timedelta(days=n - 1)).strftime('%Y-%m-%d')
+		print('Checking date %s' % airdate)
+		for s in tvshows:
+			resp = tvdb.episode_search(s['tvdb_id'], airdate)
+			if resp:
+				print('Found for %s' % s['name'])
+				for r in resp:
+					cursor.execute("""SELECT * FROM episode WHERE tvdb_id = %s""", (r['id'],))
+					if cursor.rowcount <= 0:
+						# add 1 day to account for US airdates compared to NZ airdates
+						qry = """INSERT INTO episode (tvshowid, seasonnumber, episodenumber, name, airdate, tvdb_id) VALUES (%s, %s, %s, %s, (%s::DATE + '1 day'::INTERVAL), %s) RETURNING id"""
+						qargs = (s['id'], r['airedSeason'], r['airedEpisodeNumber'], r['episodeName'], r['firstAired'], r['id'],)
+						try:
+							cursor.execute(qry, qargs)
+							g.conn.commit()
+						except psycopg2.DatabaseError:
+							g.conn.rollback()
+							cursor.close()
+							raise
 	cursor.close
 	return jsonify(error=error)
 

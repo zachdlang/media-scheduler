@@ -40,14 +40,11 @@ END;
 $$ LANGUAGE 'plpgsql';
 
 
-DROP FUNCTION IF EXISTS add_watcher_episode(INTEGER,INTEGER);
-CREATE OR REPLACE FUNCTION add_watcher_episode(_watcherid INTEGER, _episodeid INTEGER) RETURNS VOID AS $$
-DECLARE 
+DROP FUNCTION IF EXISTS mark_episode_watched(INTEGER,INTEGER);
+CREATE OR REPLACE FUNCTION mark_episode_watched(_watcherid INTEGER, _episodeid INTEGER) RETURNS VOID AS $$
+DECLARE
 BEGIN
-	IF follows_episode(_watcherid, _episodeid) = false THEN
-		INSERT INTO watcher_tvshow (watcherid, episodeid) VALUES (_watcherid, _episodeid);
-	END IF;
-	RETURN;
+	UPDATE watcher_episode SET watched = true WHERE watcherid = _watcherid AND episodeid = _episodeid;
 END;
 $$ LANGUAGE 'plpgsql';
 

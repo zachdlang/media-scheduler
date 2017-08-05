@@ -8,35 +8,66 @@
 </div>
 
 {% if outstanding %}
-	<h4>Outstanding</h4>
-	{% for e in episodes if e.in_past %}
-	<div class="show col-xs-12 col-sm-12 col-md-6 col-lg-6" data-episodeid="{{ e.id }}">
-		<div class="inner-show well col-xs-12 col-sm-12 col-md-12 col-lg-12">
-			<img class="poster img-responsive col-xs-2 col-sm-2 col-md-2 col-lg-2" src="{{ e.poster }}" alt="Poster for {{ e.show_name }}">
-			<div class="show-content col-xs-10 col-sm-10 col-md-10 col-lg-10">
-				<h5>{{ e.show_name }}</h5>
-				<h6>{{ e.name }}</h6>
-				<a class="btn btn-success btn-block"><span class="glyphicon glyphicon-ok"></span> Watched</a>
+	<div class="date col-xs-12 col-sm-12 col-md-12 col-lg-12">
+		<h4>Outstanding</h4>
+		{% for e in episodes if e.in_past %}
+		<div class="show col-xs-12 col-sm-12 col-md-6 col-lg-6" data-episodeid="{{ e.id }}">
+			<div class="inner-show well col-xs-12 col-sm-12 col-md-12 col-lg-12">
+				<img class="poster img-responsive col-xs-3 col-sm-3 col-md-3 col-lg-3" src="{{ e.poster }}" alt="Poster for {{ e.show_name }}">
+				<div class="show-content col-xs-9 col-sm-9 col-md-9 col-lg-9">
+					<h5>{{ e.show_name }} <small>{{ e.airdate_str }}</small></h5>
+					<h6>S{{ '%02d' | format(e.seasonnumber) }}E{{ '%02d' | format(e.episodenumber) }}</h6>
+					<h6>{{ e.name }}</h6>
+					<a class="btn btn-success btn-block watched_show"><span class="glyphicon glyphicon-ok"></span> Watched</a>
+				</div>
 			</div>
 		</div>
+		{% endfor %}
 	</div>
-	{% endfor %}
 {% endif %}
 
 {% for d in dates %}
-	<h4>{{ d }}</h4>
-	{% for e in episodes if e.airdate_str == d %}
-	<div class="show col-xs-12 col-sm-12 col-md-6 col-lg-6" data-episodeid="{{ e.id }}">
-		<div class="inner-show well col-xs-12 col-sm-12 col-md-12 col-lg-12">
-			<img class="poster img-responsive col-xs-2 col-sm-2 col-md-2 col-lg-2" src="{{ e.poster }}" alt="Poster for {{ e.show_name }}">
-			<div class="show-content col-xs-10 col-sm-10 col-md-10 col-lg-10">
-				<h5>{{ e.show_name }}</h5>
-				<h6>{{ e.name }}</h6>
-				<a class="btn btn-success btn-block"><span class="glyphicon glyphicon-ok"></span> Watched</a>
+	<div class="date col-xs-12 col-sm-12 col-md-12 col-lg-12">
+		<h4>{{ d }}</h4>
+		{% for e in episodes if e.airdate_str == d %}
+		<div class="show col-xs-12 col-sm-12 col-md-6 col-lg-6" data-episodeid="{{ e.id }}">
+			<div class="inner-show well col-xs-12 col-sm-12 col-md-12 col-lg-12">
+				<img class="poster img-responsive col-xs-3 col-sm-3 col-md-3 col-lg-3" src="{{ e.poster }}" alt="Poster for {{ e.show_name }}">
+				<div class="show-content col-xs-9 col-sm-9 col-md-9 col-lg-9">
+					<h5>{{ e.show_name }}</h5>
+					<h6>S{{ '%02d' | format(e.seasonnumber) }}E{{ '%02d' | format(e.episodenumber) }}</h6>
+					<h6>{{ e.name }}</h6>
+					<a class="btn btn-success btn-block watched_show"><span class="glyphicon glyphicon-ok"></span> Watched</a>
+				</div>
 			</div>
 		</div>
+		{% endfor %}
 	</div>
-	{% endfor %}
 {% endfor %}
 
+{% endblock %}
+
+{% block script %}
+<script>
+	$('.watched_show').on('click', function() {
+		var row = $(this).closest('.show');
+		console.log(row.data()['episodeid']);
+		$.ajax({
+			url: "{{ url_for('shows.schedule_watched') }}",
+			method: "POST",
+			data: { 'episodeid':row.data()['episodeid'] }
+		}).done(function(data) {
+			if (data.error) {
+				show_flash(data.error, 'danger');
+			} else {
+				row.remove();
+				$('.date').each(function() {
+					if ($(this).find('.show').length <= 0) $(this).remove();
+				});
+			}
+		}).fail(function() {
+			handle_internal_error();
+		});
+	});
+</script>
 {% endblock %}
