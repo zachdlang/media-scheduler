@@ -13,7 +13,6 @@
 			 <div class="header clearfix">
 				<nav>
 					<ul class="nav nav-pills pull-right">
-						<li role="presentation"><a href="{{ url_for('shows.schedule') }}">Home</a></li>
 						{% if is_logged_in() %}
 						<li role="presentation"><a href="{{ url_for('shows.schedule') }}">Schedule</a></li>
 						<li role="presentation"><a href="{{ url_for('shows.list') }}">Shows</a></li>

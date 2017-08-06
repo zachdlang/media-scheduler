@@ -17,7 +17,7 @@ def schedule():
 			FROM episode e
 			LEFT JOIN tvshow s ON (s.id = e.tvshowid)
 			WHERE follows_episode(%s, e.id) 
-			ORDER BY e.airdate, show_name"""
+			ORDER BY e.airdate, show_name, e.seasonnumber, e.episodenumber"""
 	cursor.execute(qry, (session['userid'],))
 	episodes = query_to_dict_list(cursor)
 	cursor.close()
@@ -57,7 +57,7 @@ def schedule_update():
 	cursor = g.conn.cursor()
 	cursor.execute("""SELECT * FROM tvshow ORDER BY name ASC""")
 	tvshows = query_to_dict_list(cursor)
-	for n in range(0, 7):
+	for n in range(0, 14):
 		# minus 1 day to account for US airdates compared to NZ airdates
 		airdate = (datetime.datetime.today() + datetime.timedelta(days=n - 1)).strftime('%Y-%m-%d')
 		print('Checking date %s' % airdate)
@@ -68,16 +68,21 @@ def schedule_update():
 				for r in resp:
 					cursor.execute("""SELECT * FROM episode WHERE tvdb_id = %s""", (r['id'],))
 					if cursor.rowcount <= 0:
-						# add 1 day to account for US airdates compared to NZ airdates
-						qry = """INSERT INTO episode (tvshowid, seasonnumber, episodenumber, name, airdate, tvdb_id) VALUES (%s, %s, %s, %s, (%s::DATE + '1 day'::INTERVAL), %s) RETURNING id"""
-						qargs = (s['id'], r['airedSeason'], r['airedEpisodeNumber'], r['episodeName'], r['firstAired'], r['id'],)
-						try:
-							cursor.execute(qry, qargs)
-							g.conn.commit()
-						except psycopg2.DatabaseError:
-							g.conn.rollback()
-							cursor.close()
-							raise
+						if r['episodeName'] is not None:
+							# add 1 day to account for US airdates compared to NZ airdates
+							qry = """INSERT INTO episode (tvshowid, seasonnumber, episodenumber, name, airdate, tvdb_id) VALUES (%s, %s, %s, %s, (%s::DATE + '1 day'::INTERVAL), %s) RETURNING id"""
+							qargs = (s['id'], r['airedSeason'], r['airedEpisodeNumber'], r['episodeName'], r['firstAired'], r['id'],)
+							try:
+								cursor.execute(qry, qargs)
+								g.conn.commit()
+							except psycopg2.DatabaseError:
+								g.conn.rollback()
+								cursor.close()
+								raise
+						else:
+							print('%s episode %s has no name' % (s['name'], r['id']))
+					else:
+						print('%s episode %s is not new' % (s['name'], r['id']))
 	cursor.close
 	return jsonify(error=error)
 
