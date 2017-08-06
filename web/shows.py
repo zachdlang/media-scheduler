@@ -51,7 +51,7 @@ def schedule_watched():
 	return jsonify(error=error)
 
 
-@shows.route('/schedule/update', methods=['GET','POST'])
+@shows.route('/schedule/update', methods=['GET'])
 def schedule_update():
 	error = None
 	cursor = g.conn.cursor()
