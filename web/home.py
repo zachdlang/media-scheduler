@@ -12,7 +12,7 @@ def index():
 @home.route('/login', methods=['GET','POST'])
 def login():
 	if is_logged_in():
-		return redirect(url_for('home.schedule'))
+		return redirect(url_for('shows.schedule'))
 
 	if request.method == 'POST':
 		params = params_to_dict(request.form)
