@@ -24,6 +24,8 @@ def login():
 			if new_hash:
 				cursor.execute("""UPDATE watcher SET password = %s WHERE id = %s""", (new_hash, resp['id'],))
 				g.conn.commit()
+			session.new = True
+			session.permanent = True
 			session['userid'] = resp['id']
 		cursor.close()
 			
