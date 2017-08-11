@@ -26,5 +26,13 @@ def before_request():
 	g.passwd_context = CryptContext().from_path(get_file_location('/passlibconfig.ini'))
 	g.config = app.config
 
+
+@app.route('/robots.txt')
+@app.route('/sitemap.xml')
+def static_from_root():
+	abort(404)
+	# return send_from_directory(app.static_folder, request.path[1:])
+
+
 if __name__ == '__main__':
 	app.run()
