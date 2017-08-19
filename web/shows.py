@@ -57,7 +57,7 @@ def schedule_update():
 	cursor = g.conn.cursor()
 	cursor.execute("""SELECT * FROM tvshow ORDER BY name ASC""")
 	tvshows = query_to_dict_list(cursor)
-	for n in range(0, 14):
+	for n in range(0, 31):
 		# minus 1 day to account for US airdates compared to NZ airdates
 		airdate = (datetime.datetime.today() + datetime.timedelta(days=n - 1)).strftime('%Y-%m-%d')
 		print('Checking date %s' % airdate)
