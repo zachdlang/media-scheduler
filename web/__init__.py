@@ -4,7 +4,37 @@ from passlib.context import CryptContext
 from web.home import home
 from web.shows import shows
 
-app = Flask(__name__)
+class BetterExceptionFlask(Flask):
+	def log_exception(self, exc_info):
+		"""Overrides log_exception called by flask to give more information
+		in exception emails.
+		"""
+		err_text = """
+URL:                  %s%s
+HTTP Method:          %s
+Client IP Address:    %s
+
+request.form:
+%s
+
+request.args:
+%s
+
+session:
+%s
+
+""" % (
+			request.host, request.path,
+			request.method,
+			request.remote_addr,
+			request.form,
+			request.args,
+			session,
+		)
+
+		self.logger.critical(err_text, exc_info=exc_info)
+
+app = BetterExceptionFlask(__name__)
 
 app.config.from_pyfile('site_config.cfg')
 app.secret_key = app.config['SECRETKEY']
@@ -13,6 +43,13 @@ app.register_blueprint(home, url_prefix='')
 app.register_blueprint(shows, url_prefix='/shows')
 
 app.jinja_env.globals.update(is_logged_in=is_logged_in)
+
+if not app.debug:
+	ADMINISTRATORS=['zach.d.lang@gmail.com']
+	msg = 'Internal Error on tvschedule'
+	mail_handler = SMTPHandler('127.0.0.1', 'no-reply@zachlang.com', ADMINISTRATORS, msg)
+	mail_handler.setLevel(logging.CRITICAL)
+	app.logger.addHandler(mail_handler)
 
 
 @app.before_request
