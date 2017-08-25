@@ -1,6 +1,8 @@
 
 from web.utility import *
 from passlib.context import CryptContext
+import logging
+from logging.handlers import SMTPHandler
 from web.home import home
 from web.shows import shows
 
