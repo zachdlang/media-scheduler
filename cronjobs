@@ -1,2 +1,2 @@
 MAILTO=zach.d.lang@gmail.com
-0 15 * * * wget -q https://tvschedule.zachlang.com/shows/schedule/update > /dev/null 2>&1
+0 15 * * * wget -q https://scheduler.zachlang.com/shows/schedule/update > /dev/null 2>&1
