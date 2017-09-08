@@ -29,7 +29,7 @@ def tvdb_request(url, params):
 	r = requests.get(url, params=params, headers=headers).text
 	resp = json.loads(r)
 	if 'Error' in resp:
-		if resp['Error'] == 'Not Authorized':
+		if resp['Error'].lower() == 'not authorized':
 			login()
 			# Refresh token and try again
 			headers['Authorization'] = 'Bearer %s' % session['tvdb_token']
