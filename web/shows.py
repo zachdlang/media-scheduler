@@ -67,6 +67,7 @@ def schedule_update():
 				print('Found for %s' % s['name'])
 				for r in resp:
 					if r['episodeName'] is not None:
+						r['episodeName'] = strip_unicode_characters(r['episodeName'])
 						cursor.execute("""SELECT * FROM episode WHERE tvdb_id = %s""", (r['id'],))
 						if cursor.rowcount <= 0:
 							# add 1 day to account for US airdates compared to NZ airdates

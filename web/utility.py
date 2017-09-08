@@ -49,3 +49,10 @@ def query_to_dict_list(cursor):
 
 def get_file_location(filename):
 	return os.path.dirname(os.path.abspath(__file__)) + filename
+
+
+def strip_unicode_characters(s):
+	replacements = { '’':"'" }
+	for key, value in replacements.items():
+		s = s.replace(key, value)
+	return s
