@@ -66,34 +66,33 @@ def schedule_update():
 			if resp:
 				print('Found for %s' % s['name'])
 				for r in resp:
-					if r['episodeName'] is not None:
-						r['episodeName'] = strip_unicode_characters(r['episodeName'])
-						cursor.execute("""SELECT * FROM episode WHERE tvdb_id = %s""", (r['id'],))
-						if cursor.rowcount <= 0:
-							# add 1 day to account for US airdates compared to NZ airdates
-							qry = """INSERT INTO episode (tvshowid, seasonnumber, episodenumber, name, airdate, tvdb_id) VALUES (%s, %s, %s, %s, (%s::DATE + '1 day'::INTERVAL), %s) RETURNING id"""
-							qargs = (s['id'], r['airedSeason'], r['airedEpisodeNumber'], r['episodeName'], r['firstAired'], r['id'],)
+					if r['episodeName'] is None:
+						r['episodeName'] = 'Season %s Episode %s' % (r['airedSeason'], r['airedEpisodeNumber'])
+					r['episodeName'] = strip_unicode_characters(r['episodeName'])
+					cursor.execute("""SELECT *, (airdate - '1 day'::INTERVAL)::DATE::TEXT AS airdate FROM episode WHERE tvdb_id = %s""", (r['id'],))
+					if cursor.rowcount <= 0:
+						# add 1 day to account for US airdates compared to NZ airdates
+						qry = """INSERT INTO episode (tvshowid, seasonnumber, episodenumber, name, airdate, tvdb_id) VALUES (%s, %s, %s, %s, (%s::DATE + '1 day'::INTERVAL), %s) RETURNING id"""
+						qargs = (s['id'], r['airedSeason'], r['airedEpisodeNumber'], r['episodeName'], r['firstAired'], r['id'],)
+						try:
+							cursor.execute(qry, qargs)
+							g.conn.commit()
+						except psycopg2.DatabaseError:
+							g.conn.rollback()
+							cursor.close()
+							raise
+					else:
+						print('%s episode %s is not new' % (s['name'], r['id']))
+						episode = cursor.fetchone()
+						if episode['name'] != r['episodeName'] or episode['airdate'] != r['firstAired']:
+							print('%s episode %s (%s) has a different name than %s (%s)' % (s['name'], episode['name'], episode['airdate'], r['episodeName'], r['firstAired']))
 							try:
-								cursor.execute(qry, qargs)
+								cursor.execute("""UPDATE episode SET name = %s, airdate = (%s::DATE + '1 day'::INTERVAL) WHERE id = %s""", (r['episodeName'], r['firstAired'], episode['id'],))
 								g.conn.commit()
 							except psycopg2.DatabaseError:
 								g.conn.rollback()
 								cursor.close()
 								raise
-						else:
-							print('%s episode %s is not new' % (s['name'], r['id']))
-							episode = cursor.fetchone()
-							if episode['name'] != r['episodeName']:
-								print('%s episode %s has a different name than %s' % (s['name'], episode['name'], r['episodeName']))
-								try:
-									cursor.execute("""UPDATE episode SET name = %s WHERE id = %s""", (r['episodeName'], episode['id'],))
-									g.conn.commit()
-								except psycopg2.DatabaseError:
-									g.conn.rollback()
-									cursor.close()
-									raise
-					else:
-						print('%s episode %s has no name' % (s['name'], r['id']))
 	cursor.close
 	return jsonify(error=error)
 
