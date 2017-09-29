@@ -73,7 +73,6 @@
 <script>
 	$('.watched_movie').on('click', function() {
 		var row = $(this).closest('.show');
-		console.log(row.data()['movieid']);
 		$.ajax({
 			url: "{{ url_for('schedule.movies_watched') }}",
 			method: "POST",
@@ -122,9 +121,9 @@
 					var m_html = '';
 					for (var i=0; i < data.result.length; i++) {
 						var m = data.result[i];
-						m_html += '<div class="search-result col-xs-12 col-sm-6 col-md-6 col-lg-6" data-moviedb_id="'+m.id+'" data-name="'+m.name+'">\
+						m_html += '<div class="search-result col-xs-12 col-sm-6 col-md-6 col-lg-6" data-moviedb_id="'+m.id+'" data-name="'+m.name+'" data-releasedate="'+m.releasedate+'">\
 										<div class="inner-search well well-sm col-xs-12 col-sm-12 col-md-12 col-lg-12">';
-						if (m.poster) m_html += '<img class="img-responsive" src="http://thetvdb.com/banners/'+m.poster+'">';
+						if (m.poster) m_html += '<img class="img-responsive" src="https://image.tmdb.org/t/p/w640'+m.poster+'">';
 						m_html += '<h5>'+m.name;
 						if (m.year) m_html += ' ('+m.year+')';
 						m_html += '</h5>\
@@ -144,7 +143,7 @@
 		$.ajax({
 			url: "{{ url_for('schedule.movies_follow') }}",
 			method: "POST",
-			data: { 'moviedb_id':row.data()['moviedb_id'], 'name':row.data()['name'] }
+			data: { 'moviedb_id':row.data()['moviedb_id'], 'name':row.data()['name'], 'releasedate':row.data()['releasedate'] }
 		}).done(function(data) {
 			if (data.error) {
 				show_flash(data.error, 'danger');

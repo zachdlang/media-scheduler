@@ -1,6 +1,6 @@
 
 from web.utility import *
-from web import tvdb
+from web import tvdb, moviedb
 
 schedule = Blueprint('schedule', __name__)
 
@@ -157,7 +157,7 @@ def shows_unfollow():
 def movies_list():
 	cursor = g.conn.cursor()
 	qry = """SELECT m.*,
-				to_char(m.releasedate, 'Day DD/MM/YYYY') AS releasedate_str, 
+				to_char(m.releasedate, 'DD/MM/YYYY') AS releasedate_str, 
 				m.releasedate < current_date AS in_past 
 			FROM movie m
 			WHERE follows_movie(%s, m.id) 
@@ -205,8 +205,8 @@ def movies_search():
 	if search:
 		resp = moviedb.search(search)
 		for r in resp:
-			year = datetime.datetime.strptime(r['firstAired'], '%Y-%m-%d').year if r['firstAired'] else None
-			result.append({ 'id':r['id'], 'name':r['seriesName'], 'poster':r['banner'], 'year':year })
+			year = datetime.datetime.strptime(r['release_date'], '%Y-%m-%d').year if r['release_date'] else None
+			result.append({ 'id':r['id'], 'name':r['title'], 'releasedate':r['release_date'], 'poster':r['poster_path'], 'year':year })
 	return jsonify(error=error, result=result)
 
 
@@ -217,13 +217,14 @@ def movies_follow():
 	params = params_to_dict(request.form)
 	moviedb_id = params.get('moviedb_id')
 	name = params.get('name')
+	releasedate = params.get('releasedate')
 	if moviedb_id and name:
 		cursor = g.conn.cursor()
 		cursor.execute("""SELECT * FROM movie WHERE moviedb_id = %s""", (moviedb_id,))
 		if cursor.rowcount <= 0:
-			cursor.execute("""INSERT INTO movie (name, releasedate, moviedb_id) VALUES (%s, %s, %s) RETURNING id""", (name, moviedb_id,))
+			cursor.execute("""INSERT INTO movie (name, releasedate, moviedb_id) VALUES (%s, %s, %s) RETURNING id""", (name, releasedate, moviedb_id,))
 		movieid = query_to_dict_list(cursor)[0]['id']
-		tvdb.get_poster(moviedb_id)
+		moviedb.get_poster(moviedb_id)
 		# Only add link if one doesn't already exist
 		cursor.execute("""SELECT add_watcher_movie(%s, %s)""", (session['userid'], movieid,))
 		g.conn.commit()
