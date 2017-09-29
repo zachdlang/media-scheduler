@@ -169,7 +169,7 @@ def movies_list():
 	dates = []
 	for m in movies:
 		if m['in_past'] is False and m['releasedate_str'] not in dates:
-			dates.append(e['releasedate_str'])
+			dates.append(m['releasedate_str'])
 		m['poster'] = moviedb.get_poster(m['moviedb_id'])
 	return render_template('movies.html', outstanding=outstanding, dates=dates, movies=movies)
 
