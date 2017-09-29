@@ -5,7 +5,42 @@ from web import tvdb
 schedule = Blueprint('schedule', __name__)
 
 
-@schedule.route('/shows', methods=['GET'])
+@schedule.route('/login', methods=['GET','POST'])
+def login():
+	if is_logged_in():
+		return redirect(url_for('schedule.shows'))
+
+	if request.method == 'POST':
+		params = params_to_dict(request.form)
+		cursor = g.conn.cursor()
+		cursor.execute("""SELECT * FROM watcher WHERE TRIM(username) = TRIM(%s)""", (params['username'],))
+		resp = query_to_dict_list(cursor)[0]
+		ok, new_hash = g.passwd_context.verify_and_update(params['password'].strip(), resp['password'].strip())
+		if ok:
+			if new_hash:
+				cursor.execute("""UPDATE watcher SET password = %s WHERE id = %s""", (new_hash, resp['id'],))
+				g.conn.commit()
+			session.new = True
+			session.permanent = True
+			session['userid'] = resp['id']
+		cursor.close()
+			
+		if ok:
+			return redirect(url_for('schedule.shows'))
+		else:
+			flash('Login failed.', 'danger')
+			return redirect(url_for('schedule.login'))
+
+	return render_template('login.html')
+
+
+@schedule.route('/logout', methods=['GET'])
+def logout():
+	session.pop('userid', None)
+	return redirect(url_for('schedule.login'))
+
+
+@schedule.route('/', methods=['GET'])
 @login_required
 def shows():
 	cursor = g.conn.cursor()
@@ -48,52 +83,6 @@ def shows_watched():
 		cursor.close()
 	else:
 		error = 'Please select an episode.'
-	return jsonify(error=error)
-
-
-@schedule.route('/update', methods=['GET'])
-def update():
-	error = None
-	cursor = g.conn.cursor()
-	cursor.execute("""SELECT * FROM tvshow ORDER BY name ASC""")
-	tvshows = query_to_dict_list(cursor)
-	for n in range(0, 31):
-		# minus 1 day to account for US airdates compared to NZ airdates
-		airdate = (datetime.datetime.today() + datetime.timedelta(days=n - 1)).strftime('%Y-%m-%d')
-		print('Checking date %s' % airdate)
-		for s in tvshows:
-			resp = tvdb.episode_search(s['tvdb_id'], airdate)
-			if resp:
-				print('Found for %s' % s['name'])
-				for r in resp:
-					if r['episodeName'] is None:
-						r['episodeName'] = 'Season %s Episode %s' % (r['airedSeason'], r['airedEpisodeNumber'])
-					r['episodeName'] = strip_unicode_characters(r['episodeName'])
-					cursor.execute("""SELECT *, (airdate - '1 day'::INTERVAL)::DATE::TEXT AS airdate FROM episode WHERE tvdb_id = %s""", (r['id'],))
-					if cursor.rowcount <= 0:
-						# add 1 day to account for US airdates compared to NZ airdates
-						qry = """INSERT INTO episode (tvshowid, seasonnumber, episodenumber, name, airdate, tvdb_id) VALUES (%s, %s, %s, %s, (%s::DATE + '1 day'::INTERVAL), %s) RETURNING id"""
-						qargs = (s['id'], r['airedSeason'], r['airedEpisodeNumber'], r['episodeName'], r['firstAired'], r['id'],)
-						try:
-							cursor.execute(qry, qargs)
-							g.conn.commit()
-						except psycopg2.DatabaseError:
-							g.conn.rollback()
-							cursor.close()
-							raise
-					else:
-						print('%s episode %s is not new' % (s['name'], r['id']))
-						episode = cursor.fetchone()
-						if episode['name'] != r['episodeName'] or episode['airdate'] != r['firstAired']:
-							print('%s episode %s (%s) has a different name than %s (%s)' % (s['name'], episode['name'], episode['airdate'], r['episodeName'], r['firstAired']))
-							try:
-								cursor.execute("""UPDATE episode SET name = %s, airdate = (%s::DATE + '1 day'::INTERVAL) WHERE id = %s""", (r['episodeName'], r['firstAired'], episode['id'],))
-								g.conn.commit()
-							except psycopg2.DatabaseError:
-								g.conn.rollback()
-								cursor.close()
-								raise
-	cursor.close
 	return jsonify(error=error)
 
 
@@ -241,4 +230,50 @@ def movies_follow():
 		cursor.close()
 	else:
 		error = 'Please select a show.'
+	return jsonify(error=error)
+
+
+@schedule.route('/update', methods=['GET'])
+def update():
+	error = None
+	cursor = g.conn.cursor()
+	cursor.execute("""SELECT * FROM tvshow ORDER BY name ASC""")
+	tvshows = query_to_dict_list(cursor)
+	for n in range(0, 31):
+		# minus 1 day to account for US airdates compared to NZ airdates
+		airdate = (datetime.datetime.today() + datetime.timedelta(days=n - 1)).strftime('%Y-%m-%d')
+		print('Checking date %s' % airdate)
+		for s in tvshows:
+			resp = tvdb.episode_search(s['tvdb_id'], airdate)
+			if resp:
+				print('Found for %s' % s['name'])
+				for r in resp:
+					if r['episodeName'] is None:
+						r['episodeName'] = 'Season %s Episode %s' % (r['airedSeason'], r['airedEpisodeNumber'])
+					r['episodeName'] = strip_unicode_characters(r['episodeName'])
+					cursor.execute("""SELECT *, (airdate - '1 day'::INTERVAL)::DATE::TEXT AS airdate FROM episode WHERE tvdb_id = %s""", (r['id'],))
+					if cursor.rowcount <= 0:
+						# add 1 day to account for US airdates compared to NZ airdates
+						qry = """INSERT INTO episode (tvshowid, seasonnumber, episodenumber, name, airdate, tvdb_id) VALUES (%s, %s, %s, %s, (%s::DATE + '1 day'::INTERVAL), %s) RETURNING id"""
+						qargs = (s['id'], r['airedSeason'], r['airedEpisodeNumber'], r['episodeName'], r['firstAired'], r['id'],)
+						try:
+							cursor.execute(qry, qargs)
+							g.conn.commit()
+						except psycopg2.DatabaseError:
+							g.conn.rollback()
+							cursor.close()
+							raise
+					else:
+						print('%s episode %s is not new' % (s['name'], r['id']))
+						episode = cursor.fetchone()
+						if episode['name'] != r['episodeName'] or episode['airdate'] != r['firstAired']:
+							print('%s episode %s (%s) has a different name than %s (%s)' % (s['name'], episode['name'], episode['airdate'], r['episodeName'], r['firstAired']))
+							try:
+								cursor.execute("""UPDATE episode SET name = %s, airdate = (%s::DATE + '1 day'::INTERVAL) WHERE id = %s""", (r['episodeName'], r['firstAired'], episode['id'],))
+								g.conn.commit()
+							except psycopg2.DatabaseError:
+								g.conn.rollback()
+								cursor.close()
+								raise
+	cursor.close
 	return jsonify(error=error)

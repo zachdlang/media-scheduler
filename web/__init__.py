@@ -3,7 +3,6 @@ from web.utility import *
 from passlib.context import CryptContext
 import logging
 from logging.handlers import SMTPHandler
-from web.home import home
 from web.schedule import schedule
 
 class BetterExceptionFlask(Flask):
@@ -41,8 +40,7 @@ app = BetterExceptionFlask(__name__)
 app.config.from_pyfile('site_config.cfg')
 app.secret_key = app.config['SECRETKEY']
 
-app.register_blueprint(home, url_prefix='')
-app.register_blueprint(schedule, url_prefix='/schedule')
+app.register_blueprint(schedule, url_prefix='')
 
 app.jinja_env.globals.update(is_logged_in=is_logged_in)
 
