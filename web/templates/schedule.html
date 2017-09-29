@@ -1,5 +1,19 @@
 {% extends 'base.html' %}
 
+{% macro gen_episode(e) -%}
+	<div class="show col-xs-12 col-sm-12 col-md-6 col-lg-6" data-episodeid="{{ e.id }}">
+		<div class="inner-show well col-xs-12 col-sm-12 col-md-12 col-lg-12">
+			<img class="poster img-responsive col-xs-3 col-sm-3 col-md-3 col-lg-3" src="{{ e.poster }}" alt="Poster for {{ e.show_name }}">
+			<div class="show-content col-xs-9 col-sm-9 col-md-9 col-lg-9">
+				<h5>{{ e.show_name }} <small>{{ e.airdate_str }}</small></h5>
+				<h6>S{{ '%02d' | format(e.seasonnumber) }}E{{ '%02d' | format(e.episodenumber) }}</h6>
+				<h6>{{ e.name }}</h6>
+				<a class="btn btn-success btn-block watched_show"><span class="glyphicon glyphicon-ok"></span> Watched</a>
+			</div>
+		</div>
+	</div>
+{%- endmacro %}
+
 {% block content %}
 <div class="heading col-xs-12 col-sm-12 col-md-12 col-lg-12">
 	<h4>
@@ -11,17 +25,7 @@
 	<div class="date col-xs-12 col-sm-12 col-md-12 col-lg-12">
 		<h4>Outstanding</h4>
 		{% for e in episodes if e.in_past %}
-		<div class="show col-xs-12 col-sm-12 col-md-6 col-lg-6" data-episodeid="{{ e.id }}">
-			<div class="inner-show well col-xs-12 col-sm-12 col-md-12 col-lg-12">
-				<img class="poster img-responsive col-xs-3 col-sm-3 col-md-3 col-lg-3" src="{{ e.poster }}" alt="Poster for {{ e.show_name }}">
-				<div class="show-content col-xs-9 col-sm-9 col-md-9 col-lg-9">
-					<h5>{{ e.show_name }} <small>{{ e.airdate_str }}</small></h5>
-					<h6>S{{ '%02d' | format(e.seasonnumber) }}E{{ '%02d' | format(e.episodenumber) }}</h6>
-					<h6>{{ e.name }}</h6>
-					<a class="btn btn-success btn-block watched_show"><span class="glyphicon glyphicon-ok"></span> Watched</a>
-				</div>
-			</div>
-		</div>
+			{{ gen_episode(e) }}
 		{% endfor %}
 	</div>
 {% endif %}
@@ -30,17 +34,7 @@
 	<div class="date col-xs-12 col-sm-12 col-md-12 col-lg-12">
 		<h4>{{ d }}</h4>
 		{% for e in episodes if e.airdate_str == d %}
-		<div class="show col-xs-12 col-sm-12 col-md-6 col-lg-6" data-episodeid="{{ e.id }}">
-			<div class="inner-show well col-xs-12 col-sm-12 col-md-12 col-lg-12">
-				<img class="poster img-responsive col-xs-3 col-sm-3 col-md-3 col-lg-3" src="{{ e.poster }}" alt="Poster for {{ e.show_name }}">
-				<div class="show-content col-xs-9 col-sm-9 col-md-9 col-lg-9">
-					<h5>{{ e.show_name }}</h5>
-					<h6>S{{ '%02d' | format(e.seasonnumber) }}E{{ '%02d' | format(e.episodenumber) }}</h6>
-					<h6>{{ e.name }}</h6>
-					<a class="btn btn-success btn-block watched_show"><span class="glyphicon glyphicon-ok"></span> Watched</a>
-				</div>
-			</div>
-		</div>
+			{{ gen_episode(e) }}
 		{% endfor %}
 	</div>
 {% endfor %}

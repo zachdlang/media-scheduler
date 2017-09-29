@@ -52,6 +52,21 @@ body {
 	padding-right: 10px;
 }
 
+.movie .inner-movie {
+	padding: 10px 10px 10px 0px;
+	min-height: 150px;
+}
+
+.movie .inner-movie .poster {
+	padding-left: 10px;
+	padding-right: 10px;
+}
+
+.movie .inner-movie .movie-content {
+	padding-left: 10px;
+	padding-right: 10px;
+}
+
 #followModal .modal-body {
 	overflow: hidden;
 }

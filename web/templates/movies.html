@@ -1,5 +1,17 @@
 {% extends 'base.html' %}
 
+{% macro gen_movie(m) -%}
+	<div class="movie col-xs-12 col-sm-12 col-md-4 col-lg-4" data-movieid="{{ m.id }}">
+		<div class="inner-movie well col-xs-12 col-sm-12 col-md-12 col-lg-12">
+			<img class="poster img-responsive col-xs-4 col-sm-4 col-md-4 col-lg-4" src="{{ m.poster }}" alt="Poster for {{ m.name }}">
+			<div class="movie-content col-xs-8 col-sm-8 col-md-8 col-lg-8">
+				<h5>{{ m.name }} <small>{{ m.releasedate_str }}</small></h5>
+				<a class="btn btn-success btn-block watched_movie"><span class="glyphicon glyphicon-ok"></span> Watched</a>
+			</div>
+		</div>
+	</div>
+{%- endmacro %}
+
 {% block content %}
 <div class="heading col-xs-12 col-sm-12 col-md-12 col-lg-12">
 	<h4>
@@ -12,15 +24,7 @@
 	<div class="date col-xs-12 col-sm-12 col-md-12 col-lg-12">
 		<h4>Outstanding</h4>
 		{% for m in movies if m.in_past %}
-		<div class="show col-xs-12 col-sm-12 col-md-6 col-lg-6" data-movieid="{{ m.id }}">
-			<div class="inner-show well col-xs-12 col-sm-12 col-md-12 col-lg-12">
-				<img class="poster img-responsive col-xs-3 col-sm-3 col-md-3 col-lg-3" src="{{ m.poster }}" alt="Poster for {{ m.name }}">
-				<div class="show-content col-xs-9 col-sm-9 col-md-9 col-lg-9">
-					<h5>{{ m.name }} <small>{{ m.releasedate_str }}</small></h5>
-					<a class="btn btn-success btn-block watched_movie"><span class="glyphicon glyphicon-ok"></span> Watched</a>
-				</div>
-			</div>
-		</div>
+			{{ gen_movie(m) }}
 		{% endfor %}
 	</div>
 {% endif %}
@@ -29,15 +33,7 @@
 	<div class="date col-xs-12 col-sm-12 col-md-12 col-lg-12">
 		<h4>{{ d }}</h4>
 		{% for m in movies if m.releasedate_str == d %}
-		<div class="show col-xs-12 col-sm-12 col-md-6 col-lg-6" data-movieid="{{ m.id }}">
-			<div class="inner-show well col-xs-12 col-sm-12 col-md-12 col-lg-12">
-				<img class="poster img-responsive col-xs-3 col-sm-3 col-md-3 col-lg-3" src="{{ m.poster }}" alt="Poster for {{ m.name }}">
-				<div class="show-content col-xs-9 col-sm-9 col-md-9 col-lg-9">
-					<h5>{{ m.name }} <small>{{ m.releasedate_str }}</small></h5>
-					<a class="btn btn-success btn-block watched_movie"><span class="glyphicon glyphicon-ok"></span> Watched</a>
-				</div>
-			</div>
-		</div>
+			{{ gen_movie(m) }}
 		{% endfor %}
 	</div>
 {% endfor %}
@@ -72,7 +68,7 @@
 {% block script %}
 <script>
 	$('.watched_movie').on('click', function() {
-		var row = $(this).closest('.show');
+		var row = $(this).closest('.movie');
 		$.ajax({
 			url: "{{ url_for('schedule.movies_watched') }}",
 			method: "POST",
@@ -83,7 +79,7 @@
 			} else {
 				row.remove();
 				$('.date').each(function() {
-					if ($(this).find('.show').length <= 0) $(this).remove();
+					if ($(this).find('.movie').length <= 0) $(this).remove();
 				});
 			}
 		}).fail(function() {

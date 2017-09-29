@@ -6,7 +6,6 @@ def moviedb_request(url, params):
 	params['api_key'] = g.config['MOVIEDB_APIKEY']
 	r = requests.get(url, params=params).text
 	resp = json.loads(r)
-	print(resp)
 	return resp
 
 
