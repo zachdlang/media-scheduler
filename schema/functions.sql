@@ -96,3 +96,43 @@ $$ LANGUAGE 'plpgsql';
 
 DROP TRIGGER IF EXISTS watcher_tvshow_remove_watcher_episodes ON watcher_tvshow CASCADE;
 CREATE TRIGGER watcher_tvshow_remove_watcher_episodes AFTER DELETE ON watcher_tvshow FOR EACH ROW EXECUTE PROCEDURE watcher_tvshow_remove_watcher_episodes();
+
+
+DROP FUNCTION IF EXISTS follows_movie(INTEGER,INTEGER);
+CREATE OR REPLACE FUNCTION follows_movie(_watcherid INTEGER, _movieid INTEGER) RETURNS BOOLEAN AS $$
+DECLARE 
+BEGIN
+	RETURN EXISTS(SELECT * FROM watcher_movie WHERE watcherid = _watcherid AND movieid = _movieid);
+END;
+$$ LANGUAGE 'plpgsql';
+
+
+DROP FUNCTION IF EXISTS add_watcher_movie(INTEGER,INTEGER);
+CREATE OR REPLACE FUNCTION add_watcher_movie(_watcherid INTEGER, _movieid INTEGER) RETURNS VOID AS $$
+DECLARE 
+BEGIN
+	IF follows_movie(_watcherid, _movieid) = false THEN
+		INSERT INTO watcher_movie (watcherid, movieid) VALUES (_watcherid, _movieid);
+	END IF;
+	RETURN;
+END;
+$$ LANGUAGE 'plpgsql';
+
+
+DROP FUNCTION IF EXISTS remove_watcher_movie(INTEGER,INTEGER);
+CREATE OR REPLACE FUNCTION remove_watcher_movie(_watcherid INTEGER, _movieid INTEGER) RETURNS VOID AS $$
+DECLARE 
+BEGIN
+	DELETE FROM watcher_movie WHERE watcherid = _watcherid AND movieid = _movieid;
+	RETURN;
+END;
+$$ LANGUAGE 'plpgsql';
+
+
+DROP FUNCTION IF EXISTS mark_movie_watched(INTEGER,INTEGER);
+CREATE OR REPLACE FUNCTION mark_movie_watched(_watcherid INTEGER, _movieid INTEGER) RETURNS VOID AS $$
+DECLARE
+BEGIN
+	UPDATE watcher_movie SET watched = true WHERE watcherid = _watcherid AND movieid = _movieid;
+END;
+$$ LANGUAGE 'plpgsql';

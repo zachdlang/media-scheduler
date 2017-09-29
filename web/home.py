@@ -12,7 +12,7 @@ def index():
 @home.route('/login', methods=['GET','POST'])
 def login():
 	if is_logged_in():
-		return redirect(url_for('shows.schedule'))
+		return redirect(url_for('schedule.shows'))
 
 	if request.method == 'POST':
 		params = params_to_dict(request.form)
@@ -30,7 +30,7 @@ def login():
 		cursor.close()
 			
 		if ok:
-			return redirect(url_for('shows.schedule'))
+			return redirect(url_for('schedule.shows'))
 		else:
 			flash('Login failed.', 'danger')
 			return redirect(url_for('home.index'))

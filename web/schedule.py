@@ -2,12 +2,12 @@
 from web.utility import *
 from web import tvdb
 
-shows = Blueprint('shows', __name__)
+schedule = Blueprint('schedule', __name__)
 
 
-@shows.route('/schedule', methods=['GET'])
+@schedule.route('/shows', methods=['GET'])
 @login_required
-def schedule():
+def shows():
 	cursor = g.conn.cursor()
 	qry = """SELECT e.*,
 				s.name AS show_name,
@@ -26,13 +26,13 @@ def schedule():
 	for e in episodes:
 		if e['in_past'] is False and e['airdate_str'] not in dates:
 			dates.append(e['airdate_str'])
-		e['poster'] = get_show_poster(e['show_tvdb_id'])
+		e['poster'] = tvdb.get_poster(e['show_tvdb_id'])
 	return render_template('schedule.html', outstanding=outstanding, dates=dates, episodes=episodes)
 
 
-@shows.route('/schedule/watched', methods=['POST'])
+@schedule.route('/shows/watched', methods=['POST'])
 @login_required
-def schedule_watched():
+def shows_watched():
 	error = None
 	params = params_to_dict(request.form)
 	episodeid = params.get('episodeid')
@@ -51,8 +51,8 @@ def schedule_watched():
 	return jsonify(error=error)
 
 
-@shows.route('/schedule/update', methods=['GET'])
-def schedule_update():
+@schedule.route('/update', methods=['GET'])
+def update():
 	error = None
 	cursor = g.conn.cursor()
 	cursor.execute("""SELECT * FROM tvshow ORDER BY name ASC""")
@@ -97,21 +97,21 @@ def schedule_update():
 	return jsonify(error=error)
 
 
-@shows.route('/list', methods=['GET'])
+@schedule.route('/shows/list', methods=['GET'])
 @login_required
-def list():
+def shows_list():
 	cursor = g.conn.cursor()
 	cursor.execute("""SELECT * FROM tvshow WHERE follows_tvshow(%s, id) ORDER BY name ASC""", (session['userid'],))
 	tvshows = query_to_dict_list(cursor)
 	cursor.close()
 	for s in tvshows:
-		s['poster'] = get_show_poster(s['tvdb_id'])
+		s['poster'] = tvdb.get_poster(s['tvdb_id'])
 	return render_template('shows.html', tvshows=tvshows)
 
 
-@shows.route('/search', methods=['GET'])
+@schedule.route('/shows/search', methods=['GET'])
 @login_required
-def search():
+def shows_search():
 	error = None
 	result = []
 	params = params_to_dict(request.args)
@@ -124,9 +124,9 @@ def search():
 	return jsonify(error=error, result=result)
 
 
-@shows.route('/follow', methods=['POST'])
+@schedule.route('/shows/follow', methods=['POST'])
 @login_required
-def follow():
+def shows_follow():
 	error = None
 	params = params_to_dict(request.form)
 	tvdb_id = params.get('tvdb_id')
@@ -137,7 +137,7 @@ def follow():
 		if cursor.rowcount <= 0:
 			cursor.execute("""INSERT INTO tvshow (name, tvdb_id) VALUES (%s, %s) RETURNING id""", (name, tvdb_id,))
 		tvshowid = query_to_dict_list(cursor)[0]['id']
-		fetch_poster(tvdb_id)
+		tvdb.get_poster(tvdb_id)
 		# Only add link if one doesn't already exist
 		cursor.execute("""SELECT add_watcher_tvshow(%s, %s)""", (session['userid'], tvshowid,))
 		g.conn.commit()
@@ -147,9 +147,9 @@ def follow():
 	return jsonify(error=error)
 
 
-@shows.route('/unfollow', methods=['POST'])
+@schedule.route('/shows/unfollow', methods=['POST'])
 @login_required
-def unfollow():
+def shows_unfollow():
 	error = None
 	params = params_to_dict(request.form)
 	tvshowid = params.get('tvshowid')
@@ -163,20 +163,82 @@ def unfollow():
 	return jsonify(error=error)
 
 
-def get_show_poster(tvdb_id):
-	fetch_poster(tvdb_id)
-	return url_for('static', filename='images/poster_%s.jpg' % tvdb_id)
+@schedule.route('/movies/list', methods=['GET'])
+@login_required
+def movies_list():
+	cursor = g.conn.cursor()
+	qry = """SELECT m.*,
+				to_char(m.releasedate, 'Day DD/MM/YYYY') AS releasedate_str, 
+				m.releasedate < current_date AS in_past 
+			FROM movie m
+			WHERE follows_movie(%s, m.id) 
+			ORDER BY m.releasedate, m.name"""
+	cursor.execute(qry, (session['userid'],))
+	movies = query_to_dict_list(cursor)
+	cursor.close()
+	outstanding = any(m['in_past'] is True for m in movies)
+	dates = []
+	for m in movies:
+		if m['in_past'] is False and m['releasedate_str'] not in dates:
+			dates.append(e['releasedate_str'])
+		m['poster'] = moviedb.get_poster(m['moviedb_id'])
+	return render_template('movies.html', outstanding=outstanding, dates=dates, movies=movies)
 
 
-def fetch_poster(tvdb_id):
-	if not os.path.exists(get_file_location('/static/images/poster_%s.jpg' % tvdb_id)):
-		resp = tvdb.image_search(tvdb_id)
-		if len(resp) > 0:
-			top_poster = resp[0]
-			for r in resp:
-				if r['ratingsInfo']['average'] > top_poster['ratingsInfo']['average']:
-					top_poster = r
-		urlretrieve('http://thetvdb.com/banners/%s' % top_poster['fileName'], get_file_location('/static/images/poster_%s.jpg' % tvdb_id))
-		img = Image.open(get_file_location('/static/images/poster_%s.jpg' % tvdb_id))
-		img_scaled = img.resize((int(img.size[0]/2),int(img.size[1]/2)), Image.ANTIALIAS)
-		img_scaled.save(get_file_location('/static/images/poster_%s.jpg' % tvdb_id), optimize=True, quality=95)
+@schedule.route('/movies/watched', methods=['POST'])
+@login_required
+def movies_watched():
+	error = None
+	params = params_to_dict(request.form)
+	movieid = params.get('movieid')
+	if movieid:
+		cursor = g.conn.cursor()
+		try:
+			cursor.execute("""SELECT mark_movie_watched(%s, %s)""", (session['userid'], movieid,))
+			g.conn.commit()
+		except psycopg2.DatabaseError:
+			g.conn.rollback()
+			cursor.close()
+			raise
+		cursor.close()
+	else:
+		error = 'Please select an movie.'
+	return jsonify(error=error)
+
+
+@schedule.route('/movies/search', methods=['GET'])
+@login_required
+def movies_search():
+	error = None
+	result = []
+	params = params_to_dict(request.args)
+	search = params.get('search')
+	if search:
+		resp = moviedb.search(search)
+		for r in resp:
+			year = datetime.datetime.strptime(r['firstAired'], '%Y-%m-%d').year if r['firstAired'] else None
+			result.append({ 'id':r['id'], 'name':r['seriesName'], 'poster':r['banner'], 'year':year })
+	return jsonify(error=error, result=result)
+
+
+@schedule.route('/movies/follow', methods=['POST'])
+@login_required
+def movies_follow():
+	error = None
+	params = params_to_dict(request.form)
+	moviedb_id = params.get('moviedb_id')
+	name = params.get('name')
+	if moviedb_id and name:
+		cursor = g.conn.cursor()
+		cursor.execute("""SELECT * FROM movie WHERE moviedb_id = %s""", (moviedb_id,))
+		if cursor.rowcount <= 0:
+			cursor.execute("""INSERT INTO movie (name, releasedate, moviedb_id) VALUES (%s, %s, %s) RETURNING id""", (name, moviedb_id,))
+		movieid = query_to_dict_list(cursor)[0]['id']
+		tvdb.get_poster(moviedb_id)
+		# Only add link if one doesn't already exist
+		cursor.execute("""SELECT add_watcher_movie(%s, %s)""", (session['userid'], movieid,))
+		g.conn.commit()
+		cursor.close()
+	else:
+		error = 'Please select a show.'
+	return jsonify(error=error)

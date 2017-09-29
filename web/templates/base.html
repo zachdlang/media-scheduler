@@ -14,8 +14,9 @@
 				<nav>
 					<ul class="nav nav-pills pull-right">
 						{% if is_logged_in() %}
-						<li role="presentation"><a href="{{ url_for('shows.schedule') }}">TV Schedule</a></li>
-						<li role="presentation"><a href="{{ url_for('shows.list') }}">TV Shows</a></li>
+						<li role="presentation"><a href="{{ url_for('schedule.shows') }}">TV Schedule</a></li>
+						<li role="presentation"><a href="{{ url_for('schedule.shows_list') }}">TV Shows</a></li>
+						<li role="presentation"><a href="{{ url_for('schedule.movies_list') }}">Movies</a></li>
 						{% endif %}
 					</ul>
 				</nav>

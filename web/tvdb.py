@@ -64,3 +64,18 @@ def image_search(tvshow_tvdb_id):
 	params = { 'keyType':'poster' }
 	resp = tvdb_request('https://api.thetvdb.com/series/%s/images/query' % tvshow_tvdb_id, params)
 	return resp['data']
+
+
+def get_poster(tvdb_id):
+	if not os.path.exists(get_file_location('/static/images/poster_%s.jpg' % tvdb_id)):
+		resp = tvdb.image_search(tvdb_id)
+		if len(resp) > 0:
+			top_poster = resp[0]
+			for r in resp:
+				if r['ratingsInfo']['average'] > top_poster['ratingsInfo']['average']:
+					top_poster = r
+		urlretrieve('http://thetvdb.com/banners/%s' % top_poster['fileName'], get_file_location('/static/images/poster_%s.jpg' % tvdb_id))
+		img = Image.open(get_file_location('/static/images/poster_%s.jpg' % tvdb_id))
+		img_scaled = img.resize((int(img.size[0]/2),int(img.size[1]/2)), Image.ANTIALIAS)
+		img_scaled.save(get_file_location('/static/images/poster_%s.jpg' % tvdb_id), optimize=True, quality=95)
+	return url_for('static', filename='images/poster_%s.jpg' % tvdb_id)
