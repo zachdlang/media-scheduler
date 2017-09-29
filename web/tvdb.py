@@ -66,7 +66,7 @@ def image_search(tvshow_tvdb_id):
 	return resp['data']
 
 
-def get_show_poster(tvdb_id):
+def get_poster(tvdb_id):
 	if not os.path.exists(get_file_location('/static/images/poster_%s.jpg' % tvdb_id)):
 		resp = image_search(tvdb_id)
 		if len(resp) > 0:
