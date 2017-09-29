@@ -31,4 +31,4 @@ def get_poster(moviedb_id):
 			img = Image.open(get_file_location('/static/images/movie_poster_%s.jpg' % moviedb_id))
 			img_scaled = img.resize((int(img.size[0]/2),int(img.size[1]/2)), Image.ANTIALIAS)
 			img_scaled.save(get_file_location('/static/images/movie_poster_%s.jpg' % moviedb_id), optimize=True, quality=95)
-		return url_for('static', filename='images/movie_poster_%s.jpg' % moviedb_id)
+	return url_for('static', filename='images/movie_poster_%s.jpg' % moviedb_id)
