@@ -9,4 +9,7 @@ DBNAME = 'tvschedule'
 DBUSER = 'postgres'
 DBPASS = 'password'
 
+TO_EMAIL = 'admin@email.com'
+FROM_EMAIL = 'no-reply@email.com'
+
 SECRETKEY = 'ictackCaugyotnatboovUst$wrekHalvOcafBiuvIpIcikbueGibKeybryes'

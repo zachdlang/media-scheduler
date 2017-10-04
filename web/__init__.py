@@ -45,9 +45,9 @@ app.register_blueprint(schedule, url_prefix='')
 app.jinja_env.globals.update(is_logged_in=is_logged_in)
 
 if not app.debug:
-	ADMINISTRATORS=['zach.d.lang@gmail.com']
+	ADMINISTRATORS=[app.config['TO_EMAIL']]
 	msg = 'Internal Error on scheduler'
-	mail_handler = SMTPHandler('127.0.0.1', 'no-reply@zachlang.com', ADMINISTRATORS, msg)
+	mail_handler = SMTPHandler('127.0.0.1', app.config['FROM_EMAIL'], ADMINISTRATORS, msg)
 	mail_handler.setLevel(logging.CRITICAL)
 	app.logger.addHandler(mail_handler)
 
