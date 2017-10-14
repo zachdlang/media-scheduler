@@ -102,7 +102,7 @@ DROP FUNCTION IF EXISTS follows_movie(INTEGER,INTEGER);
 CREATE OR REPLACE FUNCTION follows_movie(_watcherid INTEGER, _movieid INTEGER) RETURNS BOOLEAN AS $$
 DECLARE 
 BEGIN
-	RETURN EXISTS(SELECT * FROM watcher_movie WHERE watcherid = _watcherid AND movieid = _movieid);
+	RETURN EXISTS(SELECT * FROM watcher_movie WHERE watched = false AND watcherid = _watcherid AND movieid = _movieid);
 END;
 $$ LANGUAGE 'plpgsql';
 
