@@ -7,7 +7,7 @@ CREATE TABLE IF NOT EXISTS tvshow (
 
 CREATE TABLE IF NOT EXISTS episode (
 	id SERIAL primary key,
-	tvshowid INTEGER NOT NULL REFERENCES tvshow(id),
+	tvshowid INTEGER NOT NULL REFERENCES tvshow(id) ON DELETE CASCADE,
 	seasonnumber INTEGER NOT NULL,
 	episodenumber INTEGER NOT NULL,
 	name TEXT NOT NULL,
@@ -27,14 +27,14 @@ CREATE TABLE IF NOT EXISTS enduser (
 
 CREATE TABLE IF NOT EXISTS watcher_tvshow (
 	id SERIAL primary key,
-	tvshowid INTEGER NOT NULL REFERENCES tvshow(id),
-	watcherid INTEGER NOT NULL REFERENCES enduser(id)
+	tvshowid INTEGER NOT NULL REFERENCES tvshow(id) ON DELETE CASCADE,
+	watcherid INTEGER NOT NULL REFERENCES enduser(id) ON DELETE CASCADE
 )WITH OIDS;
 
 CREATE TABLE IF NOT EXISTS watcher_episode (
 	id SERIAL primary key,
-	episodeid INTEGER NOT NULL REFERENCES episode(id),
-	watcherid INTEGER NOT NULL REFERENCES enduser(id),
+	episodeid INTEGER NOT NULL REFERENCES episode(id) ON DELETE CASCADE,
+	watcherid INTEGER NOT NULL REFERENCES enduser(id) ON DELETE CASCADE,
 	watched BOOLEAN NOT NULL DEFAULT FALSE
 )WITH OIDS; 
 
