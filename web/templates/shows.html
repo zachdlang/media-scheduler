@@ -15,6 +15,7 @@
 		<div class="show-content col-xs-7 col-sm-7 col-md-7 col-lg-7">
 			<h5>{{ s.name }}</h5>
 			<a class="btn btn-danger btn-block remove_show"><span class="glyphicon glyphicon-trash"></span> Remove</a>
+			<a class="btn btn-primary btn-block" href="{{ url_for('schedule.update', tvshowid=s.id) }}"><span class="glyphicon glyphicon-refresh"></span> Refresh</a>
 		</div>
 	</div>
 </div>

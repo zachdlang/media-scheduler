@@ -235,11 +235,35 @@ def movies_follow():
 
 
 @schedule.route('/update', methods=['GET'])
-def update():
+@schedule.route('/update/<int:tvshowid>', methods=['GET'])
+def update(tvshowid=None):
 	error = None
 	cursor = g.conn.cursor()
-	cursor.execute("""SELECT * FROM tvshow ORDER BY name ASC""")
+
+	if tvshowid is not None:
+		qry = """SELECT * FROM tvshow WHERE id = %s"""
+		qargs = (tvshowid,)
+	else:
+		# Only check shows with followers to save time & requests
+		qry = """SELECT * FROM tvshow WHERE exists(SELECT * FROM watcher_tvshow WHERE tvshowid = tvshow.id) ORDER BY name ASC"""
+		qargs = None
+
+	cursor.execute(qry, qargs)
 	tvshows = query_to_dict_list(cursor)
+	cursor.close()
+	updated = check_for_updates(tvshows)
+
+	# with tvshowid parameter, is being called from page instead of cron
+	if tvshowid is not None:
+		flash('Updated %s episodes.' % updated, 'success')
+		return redirect(url_for('schedule.shows'))
+
+	return jsonify(error=error)
+
+
+def check_for_updates(tvshows):
+	updated = 0
+	cursor = g.conn.cursor()
 	for n in range(0, 31):
 		# minus 1 day to account for US airdates compared to NZ airdates
 		airdate = (datetime.datetime.today() + datetime.timedelta(days=n - 1)).strftime('%Y-%m-%d')
@@ -264,17 +288,33 @@ def update():
 							g.conn.rollback()
 							cursor.close()
 							raise
+						updated += 1
 					else:
 						print('%s episode %s is not new' % (s['name'], r['id']))
 						episode = cursor.fetchone()
-						if episode['name'] != r['episodeName'] or episode['airdate'] != r['firstAired']:
-							print('%s episode %s (%s) has a different name than %s (%s)' % (s['name'], episode['name'], episode['airdate'], r['episodeName'], r['firstAired']))
+						# I didn't like the long if statement
+						checkfor = [
+							{ 'local':episode['name'], 'remote':r['episodeName'] },
+							{ 'local':episode['airdate'], 'remote':r['firstAired'] },
+							{ 'local':episode['seasonnumber'], 'remote':r['airedSeason'] },
+							{ 'local':episode['episodenumber'], 'remote':r['airedEpisodeNumber'] }
+						]
+						changed = False
+						for c in checkfor:
+							if str(c['local']) != str(c['remote']):
+								changed = True
+						if changed:
+							print('%s episode %s has changed' % (s['name'], episode['name']))
 							try:
-								cursor.execute("""UPDATE episode SET name = %s, airdate = (%s::DATE + '1 day'::INTERVAL) WHERE id = %s""", (r['episodeName'], r['firstAired'], episode['id'],))
+								qry = """UPDATE episode SET name = %s, airdate = (%s::DATE + '1 day'::INTERVAL), seasonnumber = %s, episodenumber = %s WHERE id = %s"""
+								qargs = (r['episodeName'], r['firstAired'], r['airedSeason'], r['airedEpisodeNumber'], episode['id'],)
+								cursor.execute(qry, qargs)
 								g.conn.commit()
 							except psycopg2.DatabaseError:
 								g.conn.rollback()
 								cursor.close()
 								raise
-	cursor.close
-	return jsonify(error=error)
+							updated += 1
+	cursor.close()
+
+	return updated
