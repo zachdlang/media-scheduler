@@ -280,7 +280,7 @@ def check_for_updates(tvshows):
 					if cursor.rowcount <= 0:
 						# add 1 day to account for US airdates compared to NZ airdates
 						qry = """INSERT INTO episode (tvshowid, seasonnumber, episodenumber, name, airdate, tvdb_id) VALUES (%s, %s, %s, %s, (%s::DATE + '1 day'::INTERVAL), %s) RETURNING id"""
-						qargs = (s['id'], r['airedSeason'], r['airedEpisodeNumber'], r['episodeName'], r['firstAired'], r['id'],)
+						qargs = (s['id'], r['airedSeason'], r['airedEpisodeNumber'], strip_unicode_characters(r['episodeName']), r['firstAired'], r['id'],)
 						try:
 							cursor.execute(qry, qargs)
 							g.conn.commit()
@@ -307,7 +307,7 @@ def check_for_updates(tvshows):
 							print('%s episode %s has changed' % (s['name'], episode['name']))
 							try:
 								qry = """UPDATE episode SET name = %s, airdate = (%s::DATE + '1 day'::INTERVAL), seasonnumber = %s, episodenumber = %s WHERE id = %s"""
-								qargs = (r['episodeName'], r['firstAired'], r['airedSeason'], r['airedEpisodeNumber'], episode['id'],)
+								qargs = (strip_unicode_characters(r['episodeName']), r['firstAired'], r['airedSeason'], r['airedEpisodeNumber'], episode['id'],)
 								cursor.execute(qry, qargs)
 								g.conn.commit()
 							except psycopg2.DatabaseError:

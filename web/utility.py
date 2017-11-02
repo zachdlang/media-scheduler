@@ -55,4 +55,4 @@ def strip_unicode_characters(s):
 	replacements = { '’':"'" }
 	for key, value in replacements.items():
 		s = s.replace(key, value)
-	return s
+	return s.encode('ascii', 'ignore').decode('ascii')
