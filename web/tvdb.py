@@ -68,7 +68,11 @@ def image_search(tvshow_tvdb_id):
 
 def get_poster(tvdb_id):
 	if not os.path.exists(get_file_location('/static/images/poster_%s.jpg' % tvdb_id)):
-		resp = image_search(tvdb_id)
+		try:
+			resp = image_search(tvdb_id)
+		except Exception as e:
+			print(e)
+			return None
 		if len(resp) > 0:
 			top_poster = resp[0]
 			for r in resp:
