@@ -3,7 +3,7 @@
 {% macro gen_episode(e) -%}
 	<div class="show col-xs-12 col-sm-6 col-md-6 col-lg-6" data-episodeid="{{ e.id }}">
 		<div class="inner-show well col-xs-12 col-sm-12 col-md-12 col-lg-12">
-			<img class="poster img-responsive col-xs-3 col-sm-3 col-md-3 col-lg-3" src="{{ e.poster }}" alt="Poster for {{ e.show_name }}">
+			<img class="poster img-responsive col-xs-3 col-sm-3 col-md-3 col-lg-3" src="{% if e.poster %}{{ e.poster }}{% else %}{{ url_for('static', filename='img/placeholder.jpg') }}{% endif %}" alt="Poster for {{ e.show_name }}">
 			<div class="show-content col-xs-9 col-sm-9 col-md-9 col-lg-9">
 				<h5>{{ e.show_name }} <small>{{ e.airdate_str }}</small></h5>
 				<h6>S{{ '%02d' | format(e.seasonnumber) }}E{{ '%02d' | format(e.episodenumber) }}</h6>
@@ -26,7 +26,7 @@
 		<div class="panel panel-default">
 			<div class="panel-heading">
 				<a data-toggle="collapse" data-parent="#accordion" href="#outstanding">
-					<h4 class="panel-title">Outstanding</h4>
+					<h4 class="panel-title">Outstanding <span class="direction pull-right glyphicon glyphicon-chevron-down"></span></h4>
 				</a>
 			</div>
 			<div id="outstanding" class="panel-collapse collapse">
@@ -71,6 +71,12 @@
 		}).fail(function() {
 			handle_internal_error();
 		});
+	});
+
+	$('#outstanding').on('show.bs.collapse', function() {
+		$(this).closest('.panel').find('.direction').addClass('flip');
+	}).on('hide.bs.collapse', function() {
+		$(this).closest('.panel').find('.direction').removeClass('flip');
 	});
 </script>
 {% endblock %}

@@ -14,9 +14,9 @@
 				<nav>
 					<ul class="nav nav-pills pull-right">
 						{% if is_logged_in() %}
-						<li role="presentation"><a href="{{ url_for('schedule.shows') }}">TV Schedule</a></li>
-						<li role="presentation"><a href="{{ url_for('schedule.shows_list') }}">TV Shows</a></li>
-						<li role="presentation"><a href="{{ url_for('schedule.movies_list') }}">Movies</a></li>
+						<li role="presentation"><a href="{{ url_for('schedule.home') }}">TV Schedule</a></li>
+						<li role="presentation"><a href="{{ url_for('schedule.shows') }}">TV Shows</a></li>
+						<li role="presentation"><a href="{{ url_for('schedule.movies') }}">Movies</a></li>
 						<li role="presentation"><a href="{{ url_for('schedule.logout') }}">Logout</a></li>
 						{% endif %}
 					</ul>
@@ -51,6 +51,19 @@
 			$(document).ajaxStop(function() {
 				$('#loader').addClass('hidden');
 			});
+
+			function escapeHTML(str) {
+				var escapes = {
+					'&': '&amp;',
+					'<': '&lt;',
+					'>': '&gt;',
+					'"': '&quot;',
+					"'": '&#x27;'
+				};
+				return ('' + str).replace(/[&<>"']/g, function(match) {
+					return escapes[match];
+				});
+			}
 
 			function handle_internal_error() {
 				show_flash('Internal error occurred.', 'danger');

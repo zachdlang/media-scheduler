@@ -8,7 +8,7 @@ schedule = Blueprint('schedule', __name__)
 @schedule.route('/login', methods=['GET','POST'])
 def login():
 	if is_logged_in():
-		return redirect(url_for('schedule.shows'))
+		return redirect(url_for('schedule.home'))
 
 	if request.method == 'POST':
 		params = params_to_dict(request.form)
@@ -26,7 +26,7 @@ def login():
 		cursor.close()
 			
 		if ok:
-			return redirect(url_for('schedule.shows'))
+			return redirect(url_for('schedule.home'))
 		else:
 			flash('Login failed.', 'danger')
 			return redirect(url_for('schedule.login'))
@@ -42,7 +42,7 @@ def logout():
 
 @schedule.route('/', methods=['GET'])
 @login_required
-def shows():
+def home():
 	cursor = g.conn.cursor()
 	qry = """SELECT e.*,
 				s.name AS show_name,
@@ -86,16 +86,24 @@ def shows_watched():
 	return jsonify(error=error)
 
 
+@schedule.route('/shows', methods=['GET'])
+@login_required
+def shows():
+	return render_template('shows.html')
+
+
 @schedule.route('/shows/list', methods=['GET'])
 @login_required
 def shows_list():
 	cursor = g.conn.cursor()
-	cursor.execute("""SELECT * FROM tvshow WHERE follows_tvshow(%s, id) ORDER BY name ASC""", (session['userid'],))
-	tvshows = query_to_dict_list(cursor)
+	cursor.execute("""SELECT id, tvdb_id, name FROM tvshow WHERE follows_tvshow(%s, id) ORDER BY name ASC""", (session['userid'],))
+	shows = query_to_dict_list(cursor)
 	cursor.close()
-	for s in tvshows:
+	for s in shows:
 		s['poster'] = tvdb.get_poster(s['tvdb_id'])
-	return render_template('shows.html', tvshows=tvshows)
+		s['update_url'] = url_for('schedule.update', tvshowid=s['id'])
+		del s['tvdb_id']
+	return jsonify(shows=shows)
 
 
 @schedule.route('/shows/search', methods=['GET'])
@@ -152,6 +160,12 @@ def shows_unfollow():
 	return jsonify(error=error)
 
 
+@schedule.route('/movies', methods=['GET'])
+@login_required
+def movies():
+	return render_template('movies.html')
+
+
 @schedule.route('/movies/list', methods=['GET'])
 @login_required
 def movies_list():
@@ -165,13 +179,22 @@ def movies_list():
 	cursor.execute(qry, (session['userid'],))
 	movies = query_to_dict_list(cursor)
 	cursor.close()
-	outstanding = any(m['in_past'] is True for m in movies)
+	outstanding = []
 	dates = []
 	for m in movies:
-		if m['in_past'] is False and m['releasedate_str'] not in dates:
-			dates.append(m['releasedate_str'])
+		if m['in_past'] is False and m['releasedate_str'] not in [ x['date'] for x in dates ]:
+			dates.append({ 'date':m['releasedate_str'] })
+		elif m['in_past'] is True:
+			outstanding.append(m)
 		m['poster'] = moviedb.get_poster(m['moviedb_id'])
-	return render_template('movies.html', outstanding=outstanding, dates=dates, movies=movies)
+
+	for d in dates:
+		d['movies'] = []
+		for m in movies:
+			if m['releasedate_str'] == d['date']:
+				d['movies'].append(m)
+
+	return jsonify(dates=dates, outstanding=outstanding)
 
 
 @schedule.route('/movies/watched', methods=['POST'])
@@ -256,7 +279,7 @@ def update(tvshowid=None):
 	# with tvshowid parameter, is being called from page instead of cron
 	if tvshowid is not None:
 		flash('Updated %s episodes.' % updated, 'success')
-		return redirect(url_for('schedule.shows'))
+		return redirect(url_for('schedule.home'))
 
 	return jsonify(error=error)
 

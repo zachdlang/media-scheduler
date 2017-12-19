@@ -1,42 +1,14 @@
 {% extends 'base.html' %}
 
-{% macro gen_movie(m) -%}
-	<div class="movie col-xs-12 col-sm-6 col-md-4 col-lg-4" data-movieid="{{ m.id }}">
-		<div class="inner-movie well col-xs-12 col-sm-12 col-md-12 col-lg-12">
-			<img class="poster img-responsive col-xs-4 col-sm-4 col-md-4 col-lg-4" src="{{ m.poster }}" alt="Poster for {{ m.name }}">
-			<div class="movie-content col-xs-8 col-sm-8 col-md-8 col-lg-8">
-				<h5>{{ m.name }} <small>{{ m.releasedate_str }}</small></h5>
-				<a class="btn btn-success btn-block watched_movie"><span class="glyphicon glyphicon-ok"></span> Watched</a>
-			</div>
-		</div>
-	</div>
-{%- endmacro %}
-
 {% block content %}
 <div class="heading col-xs-12 col-sm-12 col-md-12 col-lg-12">
 	<h4>
-		Movies ({{ movies | length }})
+		Movies <span id="followed"></span>
 		<button type="button" class="btn btn-primary pull-right" data-toggle="modal" data-target="#followModal"><span class="glyphicon glyphicon-plus"></span> Add New Movie</button>
 	</h4>
 </div>
 
-{% if outstanding %}
-	<div class="date col-xs-12 col-sm-12 col-md-12 col-lg-12">
-		<h4>Outstanding</h4>
-		{% for m in movies if m.in_past %}
-			{{ gen_movie(m) }}
-		{% endfor %}
-	</div>
-{% endif %}
-
-{% for d in dates %}
-	<div class="date col-xs-12 col-sm-12 col-md-12 col-lg-12">
-		<h4>{{ d }}</h4>
-		{% for m in movies if m.releasedate_str == d %}
-			{{ gen_movie(m) }}
-		{% endfor %}
-	</div>
-{% endfor %}
+<div id="content"></div>
 
 <div id="followModal" class="modal fade" role="dialog">
 	<div class="modal-dialog">
@@ -67,24 +39,8 @@
 
 {% block script %}
 <script>
-	$('.watched_movie').on('click', function() {
-		var row = $(this).closest('.movie');
-		$.ajax({
-			url: "{{ url_for('schedule.movies_watched') }}",
-			method: "POST",
-			data: { 'movieid':row.data()['movieid'] }
-		}).done(function(data) {
-			if (data.error) {
-				show_flash(data.error, 'danger');
-			} else {
-				row.remove();
-				$('.date').each(function() {
-					if ($(this).find('.movie').length <= 0) $(this).remove();
-				});
-			}
-		}).fail(function() {
-			handle_internal_error();
-		});
+	$(document).ready(function() {
+		get_movies();
 	});
 
 	$('#followModal').on('shown.bs.modal', function() {
@@ -144,8 +100,77 @@
 			if (data.error) {
 				show_flash(data.error, 'danger');
 			} else {
+				get_movies();
 				show_flash('Successfully added.', 'success');
 				$('#follow_search').val('').focus();
+			}
+		}).fail(function() {
+			handle_internal_error();
+		});
+	});
+
+	function get_movies() {
+		$.ajax({
+			url: "{{ url_for('schedule.movies_list') }}",
+			method: "GET"
+		}).done(function(data) {
+			var count = 0;
+			var c_html = '';
+			if (data.outstanding) {
+				c_html += '<div class="date col-xs-12 col-sm-12 col-md-12 col-lg-12">\
+								<h4>Outstanding</h4>'
+				for (var i = 0; i < data.outstanding.length; i++) {
+					var m = data.outstanding[i];
+					c_html += gen_movie(m);
+					count++;
+				}
+				c_html += '</div>';
+			}
+			for (var i = 0; i < data.dates.length; i++) {
+				var d = data.dates[i];
+				c_html += '<div class="date col-xs-12 col-sm-12 col-md-12 col-lg-12">\
+								<h4>'+escapeHTML(d.date)+'</h4>';
+				for (var j = 0; j < d.movies.length; j++) {
+					var m = d.movies[j];
+					c_html += gen_movie(m);
+					count++;
+				}
+				c_html += '</div>';
+			}
+			$('#content').html(c_html);
+			$('#followed').html('('+count+')');
+		}).fail(function() {
+			handle_internal_error();
+		});
+	}
+
+	function gen_movie(m) {
+		var poster = (m.poster) ? escapeHTML(m.poster) : "{{ url_for('static', filename='img/placeholder.jpg') }}";
+		return '<div class="movie col-xs-12 col-sm-6 col-md-4 col-lg-4" data-movieid="'+m.id+'">\
+					<div class="inner-movie well col-xs-12 col-sm-12 col-md-12 col-lg-12">\
+						<img class="poster img-responsive col-xs-4 col-sm-4 col-md-4 col-lg-4" src="'+poster+'" alt="Poster for '+escapeHTML(m.name)+'">\
+						<div class="movie-content col-xs-8 col-sm-8 col-md-8 col-lg-8">\
+							<h5>'+escapeHTML(m.name)+' <small>'+escapeHTML(m.releasedate_str)+'</small></h5>\
+							<a class="btn btn-success btn-block watched_movie"><span class="glyphicon glyphicon-ok"></span> Watched</a>\
+						</div>\
+					</div>\
+				</div>';
+	}
+
+	$('#content').on('click', '.watched_movie', function() {
+		var row = $(this).closest('.movie');
+		$.ajax({
+			url: "{{ url_for('schedule.movies_watched') }}",
+			method: "POST",
+			data: { 'movieid':row.data()['movieid'] }
+		}).done(function(data) {
+			if (data.error) {
+				show_flash(data.error, 'danger');
+			} else {
+				row.remove();
+				$('.date').each(function() {
+					if ($(this).find('.movie').length <= 0) $(this).remove();
+				});
 			}
 		}).fail(function() {
 			handle_internal_error();
