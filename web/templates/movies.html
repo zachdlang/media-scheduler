@@ -1,7 +1,7 @@
 {% extends 'base.html' %}
 
 {% macro gen_movie(m) -%}
-	<div class="movie col-xs-12 col-sm-12 col-md-4 col-lg-4" data-movieid="{{ m.id }}">
+	<div class="movie col-xs-12 col-sm-6 col-md-4 col-lg-4" data-movieid="{{ m.id }}">
 		<div class="inner-movie well col-xs-12 col-sm-12 col-md-12 col-lg-12">
 			<img class="poster img-responsive col-xs-4 col-sm-4 col-md-4 col-lg-4" src="{{ m.poster }}" alt="Poster for {{ m.name }}">
 			<div class="movie-content col-xs-8 col-sm-8 col-md-8 col-lg-8">
