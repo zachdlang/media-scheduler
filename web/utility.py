@@ -4,6 +4,7 @@ from functools import wraps
 import json
 import requests
 from urllib.request import urlretrieve
+from urllib.error import HTTPError
 from PIL import Image
 from collections import OrderedDict
 import psycopg2, psycopg2.extras
