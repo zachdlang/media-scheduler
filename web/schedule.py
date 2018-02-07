@@ -101,7 +101,7 @@ def shows_list():
 	cursor.close()
 	for s in shows:
 		s['poster'] = tvdb.get_poster(s['tvdb_id'])
-		s['update_url'] = url_for('schedule.update', tvshowid=s['id'])
+		s['update_url'] = url_for('schedule.shows_update', tvshowid=s['id'])
 		del s['tvdb_id']
 	return jsonify(shows=shows)
 
@@ -187,6 +187,7 @@ def movies_list():
 		elif m['in_past'] is True:
 			outstanding.append(m)
 		m['poster'] = moviedb.get_poster(m['moviedb_id'])
+		m['update_url'] = url_for('schedule.movies_update', movieid=m['id'])
 
 	for d in dates:
 		d['movies'] = []
@@ -257,9 +258,9 @@ def movies_follow():
 	return jsonify(error=error)
 
 
-@schedule.route('/update', methods=['GET'])
-@schedule.route('/update/<int:tvshowid>', methods=['GET'])
-def update(tvshowid=None):
+@schedule.route('/shows/update', methods=['GET'])
+@schedule.route('/shows/update/<int:tvshowid>', methods=['GET'])
+def shows_update(tvshowid=None):
 	error = None
 	cursor = g.conn.cursor()
 
@@ -273,20 +274,8 @@ def update(tvshowid=None):
 
 	cursor.execute(qry, qargs)
 	tvshows = query_to_dict_list(cursor)
-	cursor.close()
-	updated = check_for_updates(tvshows)
-
-	# with tvshowid parameter, is being called from page instead of cron
-	if tvshowid is not None:
-		flash('Updated %s episodes.' % updated, 'success')
-		return redirect(url_for('schedule.home'))
-
-	return jsonify(error=error)
-
-
-def check_for_updates(tvshows):
+	
 	updated = 0
-	cursor = g.conn.cursor()
 	for n in range(0, 31):
 		# minus 1 day to account for US airdates compared to NZ airdates
 		airdate = (datetime.datetime.today() + datetime.timedelta(days=n - 1)).strftime('%Y-%m-%d')
@@ -340,4 +329,52 @@ def check_for_updates(tvshows):
 							updated += 1
 	cursor.close()
 
-	return updated
+	# with tvshowid parameter, is being called from page instead of cron
+	if tvshowid is not None:
+		flash('Updated %s episodes.' % updated, 'success')
+		return redirect(url_for('schedule.home'))
+
+	return jsonify(error=error)
+
+
+@schedule.route('/movies/update', methods=['GET'])
+@schedule.route('/movies/update/<int:movieid>', methods=['GET'])
+def movies_update(movieid=None):
+	error = None
+	cursor = g.conn.cursor()
+
+	if movieid is not None:
+		qry = """SELECT * FROM movie WHERE id = %s"""
+		qargs = (movieid,)
+	else:
+		# Only check movies with followers to save time & requests
+		qry = """SELECT * FROM movie WHERE exists(SELECT * FROM watcher_movie WHERE movieid = movie.id AND watched = false) ORDER BY name ASC"""
+		qargs = None
+
+	cursor.execute(qry, qargs)
+	movies = query_to_dict_list(cursor)
+	
+	for m in movies:
+		resp = moviedb.get(m['moviedb_id'])
+		changed = False
+		if m['name'] != resp['title']:
+			changed = True
+		m['releasedate'] = m['releasedate'].strftime("%Y-%m-%d")
+		if m['releasedate'] != resp['release_date']:
+			changed = True
+		if changed:
+			print('"%s" (%s) changed to "%s" (%s)' % (m['name'], m['releasedate'], resp['title'], resp['release_date']))
+			try:
+				cursor.execute("""UPDATE movie SET name = %s, releasedate = %s WHERE id = %s""", (resp['title'], resp['release_date'], m['id'],))
+				g.conn.commit()
+			except psycopg2.DatabaseError:
+				g.conn.rollback()
+				cursor.close()
+				raise
+
+	cursor.close()
+
+	if movieid is not None:
+		return redirect(url_for('schedule.movies'))
+
+	return jsonify(error=error)

@@ -15,9 +15,15 @@ def search(name):
 	return resp['results']
 
 
-def image_search(movie_moviedb_id):
+def get(movie_moviedb_id):
 	params = {}
 	resp = moviedb_request('https://api.themoviedb.org/3/movie/%s' % movie_moviedb_id, params)
+	return resp
+
+
+def image_search(movie_moviedb_id):
+	resp = get(movie_moviedb_id)
+	params = {}
 	conf = moviedb_request('https://api.themoviedb.org/3/configuration', params)
 	size = None
 	for s in conf['images']['poster_sizes']:
