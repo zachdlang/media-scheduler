@@ -75,7 +75,7 @@
 						var m = data.result[i];
 						m_html += '<div class="search-result col-xs-12 col-sm-6 col-md-6 col-lg-6" data-moviedb_id="'+m.id+'" data-name="'+m.name+'" data-releasedate="'+m.releasedate+'">\
 										<div class="inner-search well well-sm col-xs-12 col-sm-12 col-md-12 col-lg-12">';
-						if (m.poster) m_html += '<img class="img-responsive" src="https://image.tmdb.org/t/p/w640'+m.poster+'">';
+						if (m.poster) m_html += '<img class="img-responsive" src="https://image.tmdb.org/t/p/w500'+m.poster+'">';
 						m_html += '<h5>'+m.name;
 						if (m.year) m_html += ' ('+m.year+')';
 						m_html += '</h5>\
