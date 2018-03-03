@@ -1,3 +1,2 @@
-MAILTO=zach.d.lang@gmail.com
-0 14 * * * wget -q https://scheduler.zachlang.com/movies/update > /dev/null 2>&1
-0 15 * * * wget -q https://scheduler.zachlang.com/shows/update > /dev/null 2>&1
+0 14 * * * wget --quiet -O /dev/null https://scheduler.zachlang.com/movies/update
+0 15 * * * wget --quiet -O /dev/null https://scheduler.zachlang.com/shows/update
