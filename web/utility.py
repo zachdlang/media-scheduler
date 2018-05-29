@@ -12,6 +12,10 @@ import datetime
 import os
 
 
+class SchedulerException(Exception):
+	pass
+
+
 def login_required(f):
 	@wraps(f)
 	def decorated_function(*args, **kwargs):
