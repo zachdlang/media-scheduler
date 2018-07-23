@@ -171,11 +171,11 @@ def movies():
 def movies_list():
 	cursor = g.conn.cursor()
 	qry = """SELECT m.*,
-				to_char(m.releasedate, 'DD/MM/YYYY') AS releasedate_str, 
+				COALESCE(to_char(m.releasedate, 'DD/MM/YYYY'), 'TBD') AS releasedate_str, 
 				m.releasedate < current_date AS in_past 
 			FROM movie m
 			WHERE follows_movie(%s, m.id) 
-			ORDER BY m.releasedate, m.name"""
+			ORDER BY m.releasedate NULLS LAST, m.name"""
 	cursor.execute(qry, (session['userid'],))
 	movies = query_to_dict_list(cursor)
 	cursor.close()
@@ -188,6 +188,7 @@ def movies_list():
 			outstanding.append(m)
 		m['poster'] = moviedb.get_poster(m['moviedb_id'])
 		m['update_url'] = url_for('schedule.movies_update', movieid=m['id'])
+	dates.append({ 'date':'TBD' })
 
 	for d in dates:
 		d['movies'] = []
@@ -359,9 +360,11 @@ def movies_update(movieid=None):
 		changed = False
 		if m['name'] != resp['title']:
 			changed = True
-		m['releasedate'] = m['releasedate'].strftime("%Y-%m-%d")
-		if m['releasedate'] != resp['release_date']:
-			changed = True
+		if m['releasedate'] is not None:
+			m['releasedate'] = m['releasedate'].strftime("%Y-%m-%d")
+			if m['releasedate'] != resp['release_date']:
+				changed = True
+
 		if changed:
 			print('"%s" (%s) changed to "%s" (%s)' % (m['name'], m['releasedate'], resp['title'], resp['release_date']))
 			try:

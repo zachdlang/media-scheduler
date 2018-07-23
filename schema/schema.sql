@@ -41,7 +41,7 @@ CREATE TABLE IF NOT EXISTS watcher_episode (
 CREATE TABLE IF NOT EXISTS movie (
 	id SERIAL primary key,
 	name TEXT NOT NULL,
-	releasedate DATE NOT NULL,
+	releasedate DATE,
 	moviedb_id INTEGER NOT NULL
 )WITH OIDS;
 
