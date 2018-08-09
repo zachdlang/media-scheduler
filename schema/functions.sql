@@ -1,6 +1,6 @@
 
-DROP FUNCTION IF EXISTS follows_episode(INTEGER,INTEGER);
-CREATE OR REPLACE FUNCTION follows_episode(_watcherid INTEGER, _episodeid INTEGER) RETURNS BOOLEAN AS $$
+DROP FUNCTION IF EXISTS scheduler.follows_episode(INTEGER,INTEGER);
+CREATE OR REPLACE FUNCTION scheduler.follows_episode(_watcherid INTEGER, _episodeid INTEGER) RETURNS BOOLEAN AS $$
 DECLARE 
 BEGIN
 	-- Only care about episodes not marked as watched
@@ -9,8 +9,8 @@ END;
 $$ LANGUAGE 'plpgsql';
 
 
-DROP FUNCTION IF EXISTS follows_tvshow(INTEGER,INTEGER);
-CREATE OR REPLACE FUNCTION follows_tvshow(_watcherid INTEGER, _tvshowid INTEGER) RETURNS BOOLEAN AS $$
+DROP FUNCTION IF EXISTS scheduler.follows_tvshow(INTEGER,INTEGER);
+CREATE OR REPLACE FUNCTION scheduler.follows_tvshow(_watcherid INTEGER, _tvshowid INTEGER) RETURNS BOOLEAN AS $$
 DECLARE 
 BEGIN
 	RETURN EXISTS(SELECT * FROM watcher_tvshow WHERE watcherid = _watcherid AND tvshowid = _tvshowid);
@@ -18,8 +18,8 @@ END;
 $$ LANGUAGE 'plpgsql';
 
 
-DROP FUNCTION IF EXISTS add_watcher_tvshow(INTEGER,INTEGER);
-CREATE OR REPLACE FUNCTION add_watcher_tvshow(_watcherid INTEGER, _tvshowid INTEGER) RETURNS VOID AS $$
+DROP FUNCTION IF EXISTS scheduler.add_watcher_tvshow(INTEGER,INTEGER);
+CREATE OR REPLACE FUNCTION scheduler.add_watcher_tvshow(_watcherid INTEGER, _tvshowid INTEGER) RETURNS VOID AS $$
 DECLARE 
 BEGIN
 	IF follows_tvshow(_watcherid, _tvshowid) = false THEN
@@ -30,8 +30,8 @@ END;
 $$ LANGUAGE 'plpgsql';
 
 
-DROP FUNCTION IF EXISTS remove_watcher_tvshow(INTEGER,INTEGER);
-CREATE OR REPLACE FUNCTION remove_watcher_tvshow(_watcherid INTEGER, _tvshowid INTEGER) RETURNS VOID AS $$
+DROP FUNCTION IF EXISTS scheduler.remove_watcher_tvshow(INTEGER,INTEGER);
+CREATE OR REPLACE FUNCTION scheduler.remove_watcher_tvshow(_watcherid INTEGER, _tvshowid INTEGER) RETURNS VOID AS $$
 DECLARE 
 BEGIN
 	DELETE FROM watcher_tvshow WHERE watcherid = _watcherid AND tvshowid = _tvshowid;
@@ -40,8 +40,8 @@ END;
 $$ LANGUAGE 'plpgsql';
 
 
-DROP FUNCTION IF EXISTS mark_episode_watched(INTEGER,INTEGER);
-CREATE OR REPLACE FUNCTION mark_episode_watched(_watcherid INTEGER, _episodeid INTEGER) RETURNS VOID AS $$
+DROP FUNCTION IF EXISTS scheduler.mark_episode_watched(INTEGER,INTEGER);
+CREATE OR REPLACE FUNCTION scheduler.mark_episode_watched(_watcherid INTEGER, _episodeid INTEGER) RETURNS VOID AS $$
 DECLARE
 BEGIN
 	UPDATE watcher_episode SET watched = true WHERE watcherid = _watcherid AND episodeid = _episodeid;
@@ -49,8 +49,9 @@ END;
 $$ LANGUAGE 'plpgsql';
 
 
-DROP FUNCTION IF EXISTS episode_populate_watcher_episodes();
-CREATE OR REPLACE FUNCTION episode_populate_watcher_episodes() RETURNS TRIGGER AS $$
+DROP TRIGGER IF EXISTS episode_populate_watcher_episodes ON scheduler.episode CASCADE;
+DROP FUNCTION IF EXISTS scheduler.episode_populate_watcher_episodes();
+CREATE OR REPLACE FUNCTION scheduler.episode_populate_watcher_episodes() RETURNS TRIGGER AS $$
 DECLARE
 	rec RECORD;
 BEGIN
@@ -62,12 +63,12 @@ BEGIN
 END;
 $$ LANGUAGE 'plpgsql';
 
-DROP TRIGGER IF EXISTS episode_populate_watcher_episodes ON episode CASCADE;
-CREATE TRIGGER episode_populate_watcher_episodes AFTER INSERT ON episode FOR EACH ROW EXECUTE PROCEDURE episode_populate_watcher_episodes();
+CREATE TRIGGER episode_populate_watcher_episodes AFTER INSERT ON scheduler.episode FOR EACH ROW EXECUTE PROCEDURE scheduler.episode_populate_watcher_episodes();
 
 
-DROP FUNCTION IF EXISTS watcher_tvshow_populate_watcher_episodes();
-CREATE OR REPLACE FUNCTION watcher_tvshow_populate_watcher_episodes() RETURNS TRIGGER AS $$
+DROP TRIGGER IF EXISTS watcher_tvshow_populate_watcher_episodes ON scheduler.watcher_tvshow CASCADE;
+DROP FUNCTION IF EXISTS scheduler.watcher_tvshow_populate_watcher_episodes();
+CREATE OR REPLACE FUNCTION scheduler.watcher_tvshow_populate_watcher_episodes() RETURNS TRIGGER AS $$
 DECLARE
 	rec RECORD;
 	in_past BOOLEAN;
@@ -81,12 +82,12 @@ BEGIN
 END;
 $$ LANGUAGE 'plpgsql';
 
-DROP TRIGGER IF EXISTS watcher_tvshow_populate_watcher_episodes ON watcher_tvshow CASCADE;
-CREATE TRIGGER watcher_tvshow_populate_watcher_episodes AFTER INSERT ON watcher_tvshow FOR EACH ROW EXECUTE PROCEDURE watcher_tvshow_populate_watcher_episodes();
+CREATE TRIGGER watcher_tvshow_populate_watcher_episodes AFTER INSERT ON scheduler.watcher_tvshow FOR EACH ROW EXECUTE PROCEDURE scheduler.watcher_tvshow_populate_watcher_episodes();
 
 
-DROP FUNCTION IF EXISTS watcher_tvshow_remove_watcher_episodes();
-CREATE OR REPLACE FUNCTION watcher_tvshow_remove_watcher_episodes() RETURNS TRIGGER as $$
+DROP TRIGGER IF EXISTS watcher_tvshow_remove_watcher_episodes ON scheduler.watcher_tvshow CASCADE;
+DROP FUNCTION IF EXISTS scheduler.watcher_tvshow_remove_watcher_episodes();
+CREATE OR REPLACE FUNCTION scheduler.watcher_tvshow_remove_watcher_episodes() RETURNS TRIGGER as $$
 DECLARE
 BEGIN
 	DELETE FROM watcher_episode WHERE episodeid IN (SELECT id FROM episode WHERE tvshowid = OLD.tvshowid) AND watcherid = OLD.watcherid;
@@ -94,12 +95,11 @@ BEGIN
 END;
 $$ LANGUAGE 'plpgsql';
 
-DROP TRIGGER IF EXISTS watcher_tvshow_remove_watcher_episodes ON watcher_tvshow CASCADE;
-CREATE TRIGGER watcher_tvshow_remove_watcher_episodes AFTER DELETE ON watcher_tvshow FOR EACH ROW EXECUTE PROCEDURE watcher_tvshow_remove_watcher_episodes();
+CREATE TRIGGER watcher_tvshow_remove_watcher_episodes AFTER DELETE ON scheduler.watcher_tvshow FOR EACH ROW EXECUTE PROCEDURE scheduler.watcher_tvshow_remove_watcher_episodes();
 
 
-DROP FUNCTION IF EXISTS follows_movie(INTEGER,INTEGER);
-CREATE OR REPLACE FUNCTION follows_movie(_watcherid INTEGER, _movieid INTEGER) RETURNS BOOLEAN AS $$
+DROP FUNCTION IF EXISTS scheduler.follows_movie(INTEGER,INTEGER);
+CREATE OR REPLACE FUNCTION scheduler.follows_movie(_watcherid INTEGER, _movieid INTEGER) RETURNS BOOLEAN AS $$
 DECLARE 
 BEGIN
 	RETURN EXISTS(SELECT * FROM watcher_movie WHERE watched = false AND watcherid = _watcherid AND movieid = _movieid);
@@ -107,8 +107,8 @@ END;
 $$ LANGUAGE 'plpgsql';
 
 
-DROP FUNCTION IF EXISTS add_watcher_movie(INTEGER,INTEGER);
-CREATE OR REPLACE FUNCTION add_watcher_movie(_watcherid INTEGER, _movieid INTEGER) RETURNS VOID AS $$
+DROP FUNCTION IF EXISTS scheduler.add_watcher_movie(INTEGER,INTEGER);
+CREATE OR REPLACE FUNCTION scheduler.add_watcher_movie(_watcherid INTEGER, _movieid INTEGER) RETURNS VOID AS $$
 DECLARE 
 BEGIN
 	IF follows_movie(_watcherid, _movieid) = false THEN
@@ -119,8 +119,8 @@ END;
 $$ LANGUAGE 'plpgsql';
 
 
-DROP FUNCTION IF EXISTS remove_watcher_movie(INTEGER,INTEGER);
-CREATE OR REPLACE FUNCTION remove_watcher_movie(_watcherid INTEGER, _movieid INTEGER) RETURNS VOID AS $$
+DROP FUNCTION IF EXISTS scheduler.remove_watcher_movie(INTEGER,INTEGER);
+CREATE OR REPLACE FUNCTION scheduler.remove_watcher_movie(_watcherid INTEGER, _movieid INTEGER) RETURNS VOID AS $$
 DECLARE 
 BEGIN
 	DELETE FROM watcher_movie WHERE watcherid = _watcherid AND movieid = _movieid;
@@ -129,8 +129,8 @@ END;
 $$ LANGUAGE 'plpgsql';
 
 
-DROP FUNCTION IF EXISTS mark_movie_watched(INTEGER,INTEGER);
-CREATE OR REPLACE FUNCTION mark_movie_watched(_watcherid INTEGER, _movieid INTEGER) RETURNS VOID AS $$
+DROP FUNCTION IF EXISTS scheduler.mark_movie_watched(INTEGER,INTEGER);
+CREATE OR REPLACE FUNCTION scheduler.mark_movie_watched(_watcherid INTEGER, _movieid INTEGER) RETURNS VOID AS $$
 DECLARE
 BEGIN
 	UPDATE watcher_movie SET watched = true WHERE watcherid = _watcherid AND movieid = _movieid;
