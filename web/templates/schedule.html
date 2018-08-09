@@ -64,7 +64,7 @@
 				show_flash(data.error, 'danger');
 			} else {
 				row.remove();
-				$('.date').each(function() {
+				$('.date, .outstanding-episodes').each(function() {
 					if ($(this).find('.show').length <= 0) $(this).remove();
 				});
 			}
