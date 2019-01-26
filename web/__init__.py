@@ -59,7 +59,8 @@ def before_request():
 	g.conn = psycopg2.connect(database=app.config['DBNAME'], user=app.config['DBUSER'],
 			password=app.config['DBPASS'], port=app.config['DBPORT'],
 			host=app.config['DBHOST'],
-			cursor_factory=psycopg2.extras.DictCursor)
+			cursor_factory=psycopg2.extras.DictCursor,
+			application_name=request.path)
 	g.passwd_context = CryptContext().from_path(get_file_location('/passlibconfig.ini'))
 	g.config = app.config
 
