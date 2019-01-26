@@ -1,5 +1,15 @@
+# Standard library imports
+import requests
+import json
+from urllib.request import urlretrieve
+import os
 
-from web.utility import *
+# Third party imports
+from flask import g, url_for
+from PIL import Image
+
+# Local imports
+from web.utility import get_file_location
 
 
 def moviedb_request(url, params):
@@ -10,7 +20,7 @@ def moviedb_request(url, params):
 
 
 def search(name):
-	params = { 'query':name }
+	params = {'query': name}
 	resp = moviedb_request('https://api.themoviedb.org/3/search/movie', params)
 	return resp['results']
 
@@ -27,7 +37,7 @@ def image_search(movie_moviedb_id):
 	conf = moviedb_request('https://api.themoviedb.org/3/configuration', params)
 	size = None
 	for s in conf['images']['poster_sizes']:
-		if size is None and 'w' in s and int(s.replace('w','')) >= 500:
+		if size is None and 'w' in s and int(s.replace('w', '')) >= 500:
 			size = s
 	resp['base_url'] = conf['images']['base_url']
 	resp['poster_size'] = size
@@ -42,7 +52,7 @@ def get_poster(moviedb_id):
 			url = '%s%s%s' % (resp['base_url'], resp['poster_size'], resp['poster_path'])
 			urlretrieve(url, get_file_location('/static/images/movie_poster_%s.jpg' % moviedb_id))
 			img = Image.open(get_file_location('/static/images/movie_poster_%s.jpg' % moviedb_id))
-			img_scaled = img.resize((int(img.size[0]/2),int(img.size[1]/2)), Image.ANTIALIAS)
+			img_scaled = img.resize((int(img.size[0] / 2), int(img.size[1] / 2)), Image.ANTIALIAS)
 			img_scaled.save(get_file_location('/static/images/movie_poster_%s.jpg' % moviedb_id), optimize=True, quality=95)
 		else:
 			return None

@@ -1,11 +1,25 @@
+# Standard library imports
+import datetime
 
-from web.utility import *
+# Third party imports
+from flask import (
+	g, session, url_for, Blueprint, request, redirect,
+	flash, render_template, jsonify
+)
+import psycopg2
+
+# Local imports
 from web import tvdb, moviedb
+from web.utility import (
+	is_logged_in, params_to_dict, query_to_dict_list,
+	login_required, strip_unicode_characters
+)
+
 
 schedule = Blueprint('schedule', __name__)
 
 
-@schedule.route('/login', methods=['GET','POST'])
+@schedule.route('/login', methods=['GET', 'POST'])
 def login():
 	if is_logged_in():
 		return redirect(url_for('schedule.home'))
@@ -28,7 +42,7 @@ def login():
 					session.permanent = True
 					session['userid'] = resp['id']
 			cursor.close()
-			
+
 		if ok:
 			return redirect(url_for('schedule.home'))
 		else:
@@ -50,12 +64,12 @@ def home():
 	cursor = g.conn.cursor()
 	qry = """SELECT e.*,
 				s.name AS show_name,
-				s.tvdb_id AS show_tvdb_id, 
-				to_char(e.airdate, 'Day DD/MM/YYYY') AS airdate_str, 
-				e.airdate < current_date AS in_past 
+				s.tvdb_id AS show_tvdb_id,
+				to_char(e.airdate, 'Day DD/MM/YYYY') AS airdate_str,
+				e.airdate < current_date AS in_past
 			FROM episode e
 			LEFT JOIN tvshow s ON (s.id = e.tvshowid)
-			WHERE follows_episode(%s, e.id) 
+			WHERE follows_episode(%s, e.id)
 			ORDER BY e.airdate, show_name, e.seasonnumber, e.episodenumber"""
 	cursor.execute(qry, (session['userid'],))
 	episodes = query_to_dict_list(cursor)
@@ -121,7 +135,12 @@ def shows_search():
 		resp = tvdb.series_search(search)
 		for r in resp:
 			year = datetime.datetime.strptime(r['firstAired'], '%Y-%m-%d').year if r['firstAired'] else None
-			result.append({ 'id':r['id'], 'name':r['seriesName'], 'banner':r['banner'], 'year':year })
+			result.append({
+				'id': r['id'],
+				'name': r['seriesName'],
+				'banner': r['banner'],
+				'year': year
+			})
 	return jsonify(error=error, result=result)
 
 
@@ -175,10 +194,10 @@ def movies():
 def movies_list():
 	cursor = g.conn.cursor()
 	qry = """SELECT m.*,
-				COALESCE(to_char(m.releasedate, 'DD/MM/YYYY'), 'TBD') AS releasedate_str, 
-				m.releasedate < current_date AS in_past 
+				COALESCE(to_char(m.releasedate, 'DD/MM/YYYY'), 'TBD') AS releasedate_str,
+				m.releasedate < current_date AS in_past
 			FROM movie m
-			WHERE follows_movie(%s, m.id) 
+			WHERE follows_movie(%s, m.id)
 			ORDER BY m.releasedate NULLS LAST, m.name"""
 	cursor.execute(qry, (session['userid'],))
 	movies = query_to_dict_list(cursor)
@@ -186,13 +205,13 @@ def movies_list():
 	outstanding = []
 	dates = []
 	for m in movies:
-		if m['in_past'] is False and m['releasedate_str'] not in [ x['date'] for x in dates ]:
-			dates.append({ 'date':m['releasedate_str'] })
+		if m['in_past'] is False and m['releasedate_str'] not in [x['date'] for x in dates]:
+			dates.append({'date': m['releasedate_str']})
 		elif m['in_past'] is True:
 			outstanding.append(m)
 		m['poster'] = moviedb.get_poster(m['moviedb_id'])
 		m['update_url'] = url_for('schedule.movies_update', movieid=m['id'])
-	dates.append({ 'date':'TBD' })
+	dates.append({'date': 'TBD'})
 
 	for d in dates:
 		d['movies'] = []
@@ -235,7 +254,13 @@ def movies_search():
 		resp = moviedb.search(search)
 		for r in resp:
 			year = datetime.datetime.strptime(r['release_date'], '%Y-%m-%d').year if r['release_date'] else None
-			result.append({ 'id':r['id'], 'name':r['title'], 'releasedate':r['release_date'], 'poster':r['poster_path'], 'year':year })
+			result.append({
+				'id': r['id'],
+				'name': r['title'],
+				'releasedate': r['release_date'],
+				'poster': r['poster_path'],
+				'year': year
+			})
 	return jsonify(error=error, result=result)
 
 
@@ -279,7 +304,7 @@ def shows_update(tvshowid=None):
 
 	cursor.execute(qry, qargs)
 	tvshows = query_to_dict_list(cursor)
-	
+
 	updated = 0
 	for n in range(0, 31):
 		# minus 1 day to account for US airdates compared to NZ airdates
@@ -311,10 +336,10 @@ def shows_update(tvshowid=None):
 						episode = cursor.fetchone()
 						# I didn't like the long if statement
 						checkfor = [
-							{ 'local':episode['name'], 'remote':r['episodeName'] },
-							{ 'local':episode['airdate'], 'remote':r['firstAired'] },
-							{ 'local':episode['seasonnumber'], 'remote':r['airedSeason'] },
-							{ 'local':episode['episodenumber'], 'remote':r['airedEpisodeNumber'] }
+							{'local': episode['name'], 'remote':r['episodeName']},
+							{'local': episode['airdate'], 'remote':r['firstAired']},
+							{'local': episode['seasonnumber'], 'remote':r['airedSeason']},
+							{'local': episode['episodenumber'], 'remote':r['airedEpisodeNumber']}
 						]
 						changed = False
 						for c in checkfor:
@@ -358,7 +383,7 @@ def movies_update(movieid=None):
 
 	cursor.execute(qry, qargs)
 	movies = query_to_dict_list(cursor)
-	
+
 	for m in movies:
 		resp = moviedb.get(m['moviedb_id'])
 		changed = False
