@@ -56,7 +56,7 @@
 	$('.watched_show').on('click', function() {
 		var row = $(this).closest('.show');
 		$.ajax({
-			url: "{{ url_for('schedule.shows_watched') }}",
+			url: "{{ url_for('shows_watched') }}",
 			method: "POST",
 			data: { 'episodeid':row.data()['episodeid'] }
 		}).done(function(data) {

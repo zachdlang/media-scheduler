@@ -9,7 +9,11 @@ from flask import g, url_for
 from PIL import Image
 
 # Local imports
-from web.utility import get_file_location
+from sitetools.utility import get_static_file
+
+
+class MovieDBException(Exception):
+	pass
 
 
 def moviedb_request(url, params):
@@ -45,15 +49,15 @@ def image_search(movie_moviedb_id):
 
 
 def get_poster(moviedb_id):
-	if not os.path.exists(get_file_location('/static/images/movie_poster_%s.jpg' % moviedb_id)):
+	if not os.path.exists(get_static_file('/images/movie_poster_%s.jpg' % moviedb_id)):
 		resp = image_search(moviedb_id)
 		poster_path = resp['poster_path']
 		if poster_path:
 			url = '%s%s%s' % (resp['base_url'], resp['poster_size'], resp['poster_path'])
-			urlretrieve(url, get_file_location('/static/images/movie_poster_%s.jpg' % moviedb_id))
-			img = Image.open(get_file_location('/static/images/movie_poster_%s.jpg' % moviedb_id))
+			urlretrieve(url, get_static_file('/images/movie_poster_%s.jpg' % moviedb_id))
+			img = Image.open(get_static_file('/images/movie_poster_%s.jpg' % moviedb_id))
 			img_scaled = img.resize((int(img.size[0] / 2), int(img.size[1] / 2)), Image.ANTIALIAS)
-			img_scaled.save(get_file_location('/static/images/movie_poster_%s.jpg' % moviedb_id), optimize=True, quality=95)
+			img_scaled.save(get_static_file('/images/movie_poster_%s.jpg' % moviedb_id), optimize=True, quality=95)
 		else:
 			return None
 	return url_for('static', filename='images/movie_poster_%s.jpg' % moviedb_id)

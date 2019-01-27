@@ -63,7 +63,7 @@
 	function follow_search() {
 		if ($('#follow_search').val()) {
 			$.ajax({
-				url: "{{ url_for('schedule.movies_search') }}",
+				url: "{{ url_for('movies_search') }}",
 				method: "GET",
 				data: { 'search':$('#follow_search').val() }
 			}).done(function(data) {
@@ -93,7 +93,7 @@
 	$('#follow_search_result').on('click', '.search-result .inner-search', function() {
 		var row = $(this).closest('.search-result');
 		$.ajax({
-			url: "{{ url_for('schedule.movies_follow') }}",
+			url: "{{ url_for('movies_follow') }}",
 			method: "POST",
 			data: { 'moviedb_id':row.data()['moviedb_id'], 'name':row.data()['name'], 'releasedate':row.data()['releasedate'] }
 		}).done(function(data) {
@@ -111,7 +111,7 @@
 
 	function get_movies() {
 		$.ajax({
-			url: "{{ url_for('schedule.movies_list') }}",
+			url: "{{ url_for('movies_list') }}",
 			method: "GET"
 		}).done(function(data) {
 			var count = 0;
@@ -161,7 +161,7 @@
 	$('#content').on('click', '.watched_movie', function() {
 		var row = $(this).closest('.movie');
 		$.ajax({
-			url: "{{ url_for('schedule.movies_watched') }}",
+			url: "{{ url_for('movies_watched') }}",
 			method: "POST",
 			data: { 'movieid':row.data()['movieid'] }
 		}).done(function(data) {

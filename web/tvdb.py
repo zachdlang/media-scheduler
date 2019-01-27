@@ -9,7 +9,11 @@ from flask import g, session, url_for
 from PIL import Image
 
 # Local imports
-from web.utility import SchedulerException, get_file_location
+from sitetools.utility import get_static_file
+
+
+class TVDBException(Exception):
+	pass
 
 
 def get_headers():
@@ -30,10 +34,10 @@ def login():
 	headers = get_headers()
 	resp = requests.post('https://api.thetvdb.com/login', data=json.dumps(data), headers=headers)
 	if resp.status_code == 503:
-		raise SchedulerException('TVDB currently down. Please try again later.')
+		raise TVDBException('TVDB currently down. Please try again later.')
 	resp = json.loads(resp.text)
 	if 'Error' in resp:
-		raise SchedulerException(resp['Error'])
+		raise TVDBException(resp['Error'])
 	session['tvdb_token'] = resp['token']
 
 
@@ -52,9 +56,9 @@ def tvdb_request(url, params):
 			r = requests.get(url, params=params, headers=headers).text
 			resp = json.loads(r)
 			if 'Error' in resp:
-				raise SchedulerException(resp['Error'])
+				raise TVDBException(resp['Error'])
 		else:
-			raise SchedulerException(resp['Error'])
+			raise TVDBException(resp['Error'])
 	return resp
 
 
@@ -68,7 +72,7 @@ def episode_search(tvshow_tvdb_id, airdate):
 	params = {'firstAired': airdate}
 	try:
 		resp = tvdb_request('https://api.thetvdb.com/series/%s/episodes/query' % tvshow_tvdb_id, params)
-	except SchedulerException as e:
+	except TVDBException as e:
 		if 'No results for your query' in str(e):
 			resp = {'data': []}
 		else:
@@ -83,10 +87,10 @@ def image_search(tvshow_tvdb_id):
 
 
 def get_poster(tvdb_id):
-	if not os.path.exists(get_file_location('/static/images/poster_%s.jpg' % tvdb_id)):
+	if not os.path.exists(get_static_file('/images/poster_%s.jpg' % tvdb_id)):
 		try:
 			resp = image_search(tvdb_id)
-		except SchedulerException as e:
+		except TVDBException as e:
 			print(e)
 			return None
 		if len(resp) > 0:
@@ -94,8 +98,8 @@ def get_poster(tvdb_id):
 			for r in resp:
 				if r['ratingsInfo']['average'] > top_poster['ratingsInfo']['average']:
 					top_poster = r
-		urlretrieve('http://thetvdb.com/banners/%s' % top_poster['fileName'], get_file_location('/static/images/poster_%s.jpg' % tvdb_id))
-		img = Image.open(get_file_location('/static/images/poster_%s.jpg' % tvdb_id))
+		urlretrieve('http://thetvdb.com/banners/%s' % top_poster['fileName'], get_static_file('/images/poster_%s.jpg' % tvdb_id))
+		img = Image.open(get_static_file('/images/poster_%s.jpg' % tvdb_id))
 		img_scaled = img.resize((int(img.size[0] / 2), int(img.size[1] / 2)), Image.ANTIALIAS)
-		img_scaled.save(get_file_location('/static/images/poster_%s.jpg' % tvdb_id), optimize=True, quality=95)
+		img_scaled.save(get_static_file('/images/poster_%s.jpg' % tvdb_id), optimize=True, quality=95)
 	return url_for('static', filename='images/poster_%s.jpg' % tvdb_id)

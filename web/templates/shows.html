@@ -63,7 +63,7 @@
 	function follow_search() {
 		if ($('#follow_search').val()) {
 			$.ajax({
-				url: "{{ url_for('schedule.shows_search') }}",
+				url: "{{ url_for('shows_search') }}",
 				method: "GET",
 				data: { 'search':$('#follow_search').val() }
 			}).done(function(data) {
@@ -93,7 +93,7 @@
 	$('#follow_search_result').on('click', '.search-result .inner-search', function() {
 		var row = $(this).closest('.search-result');
 		$.ajax({
-			url: "{{ url_for('schedule.shows_follow') }}",
+			url: "{{ url_for('shows_follow') }}",
 			method: "POST",
 			data: { 'tvdb_id':row.data()['tvdb_id'], 'name':row.data()['name'] }
 		}).done(function(data) {
@@ -111,7 +111,7 @@
 
 	function get_shows() {
 		$.ajax({
-			url: "{{ url_for('schedule.shows_list') }}",
+			url: "{{ url_for('shows_list') }}",
 			method: "GET"
 		}).done(function(data) {
 			var c_html = '';
@@ -140,7 +140,7 @@
 	$('#content').on('click', '.confirm_remove', function() {
 		var row = $(this).closest('.show');
 		$.ajax({
-			url: "{{ url_for('schedule.shows_unfollow') }}",
+			url: "{{ url_for('shows_unfollow') }}",
 			method: "POST",
 			data: { 'tvshowid':row.data()['tvshowid'] }
 		}).done(function(data) {
