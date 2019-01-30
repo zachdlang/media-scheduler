@@ -5,7 +5,7 @@ import json
 from urllib.request import urlretrieve
 
 # Third party imports
-from flask import g, session, url_for
+from flask import session, url_for, current_app as app
 from PIL import Image
 
 # Local imports
@@ -27,9 +27,9 @@ def get_headers():
 
 def login():
 	data = {
-		'apikey': g.config['TVDB_APIKEY'],
-		'userkey': g.config['TVDB_USERKEY'],
-		'username': g.config['TVDB_USERNAME']
+		'apikey': app.config['TVDB_APIKEY'],
+		'userkey': app.config['TVDB_USERKEY'],
+		'username': app.config['TVDB_USERNAME']
 	}
 	headers = get_headers()
 	resp = requests.post('https://api.thetvdb.com/login', data=json.dumps(data), headers=headers)
@@ -41,7 +41,7 @@ def login():
 	session['tvdb_token'] = resp['token']
 
 
-def tvdb_request(url, params):
+def send_request(url, params):
 	if 'tvdb_token' not in session:
 		login()
 	headers = get_headers()
@@ -64,14 +64,14 @@ def tvdb_request(url, params):
 
 def series_search(name):
 	params = {'name': name}
-	resp = tvdb_request('https://api.thetvdb.com/search/series', params)
+	resp = send_request('https://api.thetvdb.com/search/series', params)
 	return resp['data']
 
 
 def episode_search(tvshow_tvdb_id, airdate):
 	params = {'firstAired': airdate}
 	try:
-		resp = tvdb_request('https://api.thetvdb.com/series/%s/episodes/query' % tvshow_tvdb_id, params)
+		resp = send_request('https://api.thetvdb.com/series/%s/episodes/query' % tvshow_tvdb_id, params)
 	except TVDBException as e:
 		if 'No results for your query' in str(e):
 			resp = {'data': []}
@@ -82,7 +82,7 @@ def episode_search(tvshow_tvdb_id, airdate):
 
 def image_search(tvshow_tvdb_id):
 	params = {'keyType': 'poster'}
-	resp = tvdb_request('https://api.thetvdb.com/series/%s/images/query' % tvshow_tvdb_id, params)
+	resp = send_request('https://api.thetvdb.com/series/%s/images/query' % tvshow_tvdb_id, params)
 	return resp['data']
 
 

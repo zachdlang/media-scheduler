@@ -5,18 +5,17 @@ from logging.handlers import SMTPHandler
 
 # Third party imports
 from flask import (
-	g, send_from_directory, request, session, url_for, redirect,
+	send_from_directory, request, session, url_for, redirect,
 	flash, render_template, jsonify
 )
-import psycopg2
-import psycopg2.extras
 
 # Local imports
 from web import tvdb, moviedb
 from sitetools.utility import (
 	BetterExceptionFlask, is_logged_in, params_to_dict,
-	query_to_dict_list, login_required, strip_unicode_characters,
-	check_login
+	login_required, strip_unicode_characters, check_login,
+	fetch_query, mutate_query, disconnect_database,
+	handle_exception
 )
 
 app = BetterExceptionFlask(__name__)
@@ -34,18 +33,14 @@ if not app.debug:
 	app.logger.addHandler(mail_handler)
 
 
-@app.before_request
-def before_request():
-	if '/static/' in request.path:
-		return
-	g.conn = psycopg2.connect(
-		database=app.config['DBNAME'], user=app.config['DBUSER'],
-		password=app.config['DBPASS'], port=app.config['DBPORT'],
-		host=app.config['DBHOST'],
-		cursor_factory=psycopg2.extras.DictCursor,
-		application_name=request.path
-	)
-	g.config = app.config
+@app.errorhandler(500)
+def internal_error(e):
+	return handle_exception
+
+
+@app.teardown_appcontext
+def teardown(error):
+	disconnect_database()
 
 
 @app.route('/favicon.ico')
@@ -83,7 +78,6 @@ def logout():
 @app.route('/', methods=['GET'])
 @login_required
 def home():
-	cursor = g.conn.cursor()
 	qry = """SELECT e.*,
 				s.name AS show_name,
 				s.tvdb_id AS show_tvdb_id,
@@ -93,9 +87,7 @@ def home():
 			LEFT JOIN tvshow s ON (s.id = e.tvshowid)
 			WHERE follows_episode(%s, e.id)
 			ORDER BY e.airdate, show_name, e.seasonnumber, e.episodenumber"""
-	cursor.execute(qry, (session['userid'],))
-	episodes = query_to_dict_list(cursor)
-	cursor.close()
+	episodes = fetch_query(qry, (session['userid'],))
 	outstanding = any(e['in_past'] is True for e in episodes)
 	dates = []
 	for e in episodes:
@@ -112,15 +104,7 @@ def shows_watched():
 	params = params_to_dict(request.form)
 	episodeid = params.get('episodeid')
 	if episodeid:
-		cursor = g.conn.cursor()
-		try:
-			cursor.execute("""SELECT mark_episode_watched(%s, %s)""", (session['userid'], episodeid,))
-			g.conn.commit()
-		except psycopg2.DatabaseError:
-			g.conn.rollback()
-			cursor.close()
-			raise
-		cursor.close()
+		mutate_query("SELECT mark_episode_watched(%s, %s)", (session['userid'], episodeid,))
 	else:
 		error = 'Please select an episode.'
 	return jsonify(error=error)
@@ -135,10 +119,8 @@ def shows():
 @app.route('/shows/list', methods=['GET'])
 @login_required
 def shows_list():
-	cursor = g.conn.cursor()
-	cursor.execute("""SELECT id, tvdb_id, name FROM tvshow WHERE follows_tvshow(%s, id) ORDER BY name ASC""", (session['userid'],))
-	shows = query_to_dict_list(cursor)
-	cursor.close()
+	qry = "SELECT id, tvdb_id, name FROM tvshow WHERE follows_tvshow(%s, id) ORDER BY name ASC"
+	shows = fetch_query(qry, (session['userid'],))
 	for s in shows:
 		s['poster'] = tvdb.get_poster(s['tvdb_id'])
 		s['update_url'] = url_for('shows_update', tvshowid=s['id'])
@@ -174,16 +156,12 @@ def shows_follow():
 	tvdb_id = params.get('tvdb_id')
 	name = params.get('name')
 	if tvdb_id and name:
-		cursor = g.conn.cursor()
-		cursor.execute("""SELECT * FROM tvshow WHERE tvdb_id = %s""", (tvdb_id,))
-		if cursor.rowcount <= 0:
-			cursor.execute("""INSERT INTO tvshow (name, tvdb_id) VALUES (%s, %s) RETURNING id""", (name, tvdb_id,))
-		tvshowid = query_to_dict_list(cursor)[0]['id']
+		tvshow = fetch_query("SELECT id FROM tvshow WHERE tvdb_id = %s", (tvdb_id,), single_row=True)
+		if not tvshow:
+			qry = "INSERT INTO tvshow (name, tvdb_id) VALUES (%s, %s) RETURNING id"
+			tvshow = mutate_query(qry, (name, tvdb_id,), returning=True)
+		mutate_query("SELECT add_watcher_tvshow(%s, %s)", (session['userid'], tvshow['id'],))
 		tvdb.get_poster(tvdb_id)
-		# Only add link if one doesn't already exist
-		cursor.execute("""SELECT add_watcher_tvshow(%s, %s)""", (session['userid'], tvshowid,))
-		g.conn.commit()
-		cursor.close()
 	else:
 		error = 'Please select a show.'
 	return jsonify(error=error)
@@ -196,10 +174,7 @@ def shows_unfollow():
 	params = params_to_dict(request.form)
 	tvshowid = params.get('tvshowid')
 	if tvshowid:
-		cursor = g.conn.cursor()
-		cursor.execute("""SELECT remove_watcher_tvshow(%s, %s)""", (session['userid'], tvshowid,))
-		g.conn.commit()
-		cursor.close()
+		mutate_query("SELECT remove_watcher_tvshow(%s, %s)", (session['userid'], tvshowid,))
 	else:
 		error = 'Please select a show.'
 	return jsonify(error=error)
@@ -214,16 +189,13 @@ def movies():
 @app.route('/movies/list', methods=['GET'])
 @login_required
 def movies_list():
-	cursor = g.conn.cursor()
 	qry = """SELECT m.*,
 				COALESCE(to_char(m.releasedate, 'DD/MM/YYYY'), 'TBD') AS releasedate_str,
 				m.releasedate < current_date AS in_past
 			FROM movie m
 			WHERE follows_movie(%s, m.id)
 			ORDER BY m.releasedate NULLS LAST, m.name"""
-	cursor.execute(qry, (session['userid'],))
-	movies = query_to_dict_list(cursor)
-	cursor.close()
+	movies = fetch_query(qry, (session['userid'],))
 	outstanding = []
 	dates = []
 	for m in movies:
@@ -251,15 +223,7 @@ def movies_watched():
 	params = params_to_dict(request.form)
 	movieid = params.get('movieid')
 	if movieid:
-		cursor = g.conn.cursor()
-		try:
-			cursor.execute("""SELECT mark_movie_watched(%s, %s)""", (session['userid'], movieid,))
-			g.conn.commit()
-		except psycopg2.DatabaseError:
-			g.conn.rollback()
-			cursor.close()
-			raise
-		cursor.close()
+		mutate_query("SELECT mark_movie_watched(%s, %s)", (session['userid'], movieid,))
 	else:
 		error = 'Please select an movie.'
 	return jsonify(error=error)
@@ -295,16 +259,12 @@ def movies_follow():
 	name = params.get('name')
 	releasedate = params.get('releasedate')
 	if moviedb_id and name:
-		cursor = g.conn.cursor()
-		cursor.execute("""SELECT * FROM movie WHERE moviedb_id = %s""", (moviedb_id,))
-		if cursor.rowcount <= 0:
-			cursor.execute("""INSERT INTO movie (name, releasedate, moviedb_id) VALUES (%s, %s, %s) RETURNING id""", (name, releasedate, moviedb_id,))
-		movieid = query_to_dict_list(cursor)[0]['id']
+		movie = fetch_query("SELECT * FROM movie WHERE moviedb_id = %s", (moviedb_id,), single_row=True)
+		if not movie:
+			qry = "INSERT INTO movie (name, releasedate, moviedb_id) VALUES (%s, %s, %s) RETURNING id"
+			movie = mutate_query(qry, (name, releasedate, moviedb_id,), returning=True)
+		mutate_query("SELECT add_watcher_movie(%s, %s)", (session['userid'], movie['id'],))
 		moviedb.get_poster(moviedb_id)
-		# Only add link if one doesn't already exist
-		cursor.execute("""SELECT add_watcher_movie(%s, %s)""", (session['userid'], movieid,))
-		g.conn.commit()
-		cursor.close()
 	else:
 		error = 'Please select a show.'
 	return jsonify(error=error)
@@ -314,18 +274,16 @@ def movies_follow():
 @app.route('/shows/update/<int:tvshowid>', methods=['GET'])
 def shows_update(tvshowid=None):
 	error = None
-	cursor = g.conn.cursor()
 
 	if tvshowid is not None:
-		qry = """SELECT * FROM tvshow WHERE id = %s"""
+		qry = "SELECT * FROM tvshow WHERE id = %s"
 		qargs = (tvshowid,)
 	else:
 		# Only check shows with followers to save time & requests
-		qry = """SELECT * FROM tvshow WHERE exists(SELECT * FROM watcher_tvshow WHERE tvshowid = tvshow.id) ORDER BY name ASC"""
+		qry = "SELECT * FROM tvshow WHERE exists(SELECT * FROM watcher_tvshow WHERE tvshowid = tvshow.id) ORDER BY name ASC"
 		qargs = None
 
-	cursor.execute(qry, qargs)
-	tvshows = query_to_dict_list(cursor)
+	tvshows = fetch_query(qry, qargs)
 
 	updated = 0
 	for n in range(0, 31):
@@ -340,46 +298,44 @@ def shows_update(tvshowid=None):
 					if r['episodeName'] is None:
 						r['episodeName'] = 'Season %s Episode %s' % (r['airedSeason'], r['airedEpisodeNumber'])
 					r['episodeName'] = strip_unicode_characters(r['episodeName'])
-					cursor.execute("""SELECT *, (airdate - '1 day'::INTERVAL)::DATE::TEXT AS airdate FROM episode WHERE tvdb_id = %s""", (r['id'],))
-					if cursor.rowcount <= 0:
+
+					qry = "SELECT *, (airdate - '1 day'::INTERVAL)::DATE::TEXT AS airdate FROM episode WHERE tvdb_id = %s"
+					existing = fetch_query(qry, (r['id'],), single_row=True)
+					if not existing:
 						# add 1 day to account for US airdates compared to NZ airdates
-						qry = """INSERT INTO episode (tvshowid, seasonnumber, episodenumber, name, airdate, tvdb_id) VALUES (%s, %s, %s, %s, (%s::DATE + '1 day'::INTERVAL), %s) RETURNING id"""
-						qargs = (s['id'], r['airedSeason'], r['airedEpisodeNumber'], strip_unicode_characters(r['episodeName']), r['firstAired'], r['id'],)
-						try:
-							cursor.execute(qry, qargs)
-							g.conn.commit()
-						except psycopg2.DatabaseError:
-							g.conn.rollback()
-							cursor.close()
-							raise
+						qry = """INSERT INTO episode (tvshowid, seasonnumber, episodenumber, name, airdate, tvdb_id)
+								VALUES (%s, %s, %s, %s, (%s::DATE + '1 day'::INTERVAL), %s) RETURNING id"""
+						qargs = (
+							s['id'], r['airedSeason'], r['airedEpisodeNumber'],
+							strip_unicode_characters(r['episodeName']),
+							r['firstAired'], r['id'],
+						)
+						mutate_query(qry, qargs)
 						updated += 1
 					else:
 						print('%s episode %s is not new' % (s['name'], r['id']))
-						episode = cursor.fetchone()
 						# I didn't like the long if statement
 						checkfor = [
-							{'local': episode['name'], 'remote':r['episodeName']},
-							{'local': episode['airdate'], 'remote':r['firstAired']},
-							{'local': episode['seasonnumber'], 'remote':r['airedSeason']},
-							{'local': episode['episodenumber'], 'remote':r['airedEpisodeNumber']}
+							{'local': existing['name'], 'remote':r['episodeName']},
+							{'local': existing['airdate'], 'remote':r['firstAired']},
+							{'local': existing['seasonnumber'], 'remote':r['airedSeason']},
+							{'local': existing['episodenumber'], 'remote':r['airedEpisodeNumber']}
 						]
 						changed = False
 						for c in checkfor:
 							if str(c['local']) != str(c['remote']):
 								changed = True
 						if changed:
-							print('%s episode %s has changed' % (s['name'], episode['name']))
-							try:
-								qry = """UPDATE episode SET name = %s, airdate = (%s::DATE + '1 day'::INTERVAL), seasonnumber = %s, episodenumber = %s WHERE id = %s"""
-								qargs = (strip_unicode_characters(r['episodeName']), r['firstAired'], r['airedSeason'], r['airedEpisodeNumber'], episode['id'],)
-								cursor.execute(qry, qargs)
-								g.conn.commit()
-							except psycopg2.DatabaseError:
-								g.conn.rollback()
-								cursor.close()
-								raise
+							print('%s episode %s has changed' % (s['name'], existing['name']))
+							qry = """UPDATE episode SET name = %s, airdate = (%s::DATE + '1 day'::INTERVAL),
+										seasonnumber = %s, episodenumber = %s
+									WHERE id = %s"""
+							qargs = (
+								strip_unicode_characters(r['episodeName']), r['firstAired'],
+								r['airedSeason'], r['airedEpisodeNumber'], existing['id'],
+							)
+							mutate_query(qry, qargs)
 							updated += 1
-	cursor.close()
 
 	# with tvshowid parameter, is being called from page instead of cron
 	if tvshowid is not None:
@@ -393,18 +349,16 @@ def shows_update(tvshowid=None):
 @app.route('/movies/update/<int:movieid>', methods=['GET'])
 def movies_update(movieid=None):
 	error = None
-	cursor = g.conn.cursor()
 
 	if movieid is not None:
-		qry = """SELECT * FROM movie WHERE id = %s"""
+		qry = "SELECT * FROM movie WHERE id = %s"
 		qargs = (movieid,)
 	else:
 		# Only check movies with followers to save time & requests
-		qry = """SELECT * FROM movie WHERE exists(SELECT * FROM watcher_movie WHERE movieid = movie.id AND watched = false) ORDER BY name ASC"""
+		qry = "SELECT * FROM movie WHERE exists(SELECT * FROM watcher_movie WHERE movieid = movie.id AND watched = false) ORDER BY name ASC"
 		qargs = None
 
-	cursor.execute(qry, qargs)
-	movies = query_to_dict_list(cursor)
+	movies = fetch_query(qry, qargs)
 
 	for m in movies:
 		resp = moviedb.get(m['moviedb_id'])
@@ -418,15 +372,9 @@ def movies_update(movieid=None):
 
 		if changed:
 			print('"%s" (%s) changed to "%s" (%s)' % (m['name'], m['releasedate'], resp['title'], resp['release_date']))
-			try:
-				cursor.execute("""UPDATE movie SET name = %s, releasedate = %s WHERE id = %s""", (resp['title'], resp['release_date'], m['id'],))
-				g.conn.commit()
-			except psycopg2.DatabaseError:
-				g.conn.rollback()
-				cursor.close()
-				raise
-
-	cursor.close()
+			qry = "UPDATE movie SET name = %s, releasedate = %s WHERE id = %s"
+			qargs = (resp['title'], resp['release_date'], m['id'],)
+			mutate_query(qry, qargs)
 
 	if movieid is not None:
 		return redirect(url_for('movies'))
