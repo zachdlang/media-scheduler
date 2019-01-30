@@ -57,6 +57,9 @@ def send_request(url, params):
 			resp = json.loads(r)
 			if 'Error' in resp:
 				raise TVDBException(resp['Error'])
+		elif resp['Error'].lower() == 'resource not found':
+			# No search results
+			resp['data'] = []
 		else:
 			raise TVDBException(resp['Error'])
 	return resp
