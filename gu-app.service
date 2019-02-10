@@ -1,0 +1,13 @@
+[Unit]
+Description=scheduler
+After=network.target
+
+[Service]
+User=www-data
+Restart=on-failure
+WorkingDirectory=/var/www/scheduler/
+ExecStart=/usr/local/bin/gunicorn -c /var/www/scheduler/gunicorn.conf -b 127.0.0.1:8001 web:app
+
+[Install]
+WantedBy=multi-user.target
+
