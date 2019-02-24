@@ -1,0 +1,12 @@
+[Unit]
+Description=scheduler-celery
+After=network.target
+
+[Service]
+User=www-data
+Restart=on-failure
+WorkingDirectory=/var/www/scheduler
+ExecStart=/usr/local/bin/celery worker -A web.celery --workdir /var/www/scheduler --logfile /tmp/scheduler_celery.log
+
+[Install]
+WantedBy=multi-user.target
