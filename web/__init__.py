@@ -15,13 +15,15 @@ from sitetools.utility import (
 	BetterExceptionFlask, is_logged_in, params_to_dict,
 	login_required, strip_unicode_characters, check_login,
 	fetch_query, mutate_query, disconnect_database,
-	handle_exception
+	handle_exception, setup_celery
 )
 
 app = BetterExceptionFlask(__name__)
 
 app.config.from_pyfile('site_config.cfg')
 app.secret_key = app.config['SECRETKEY']
+
+celery = setup_celery(app)
 
 app.jinja_env.globals.update(is_logged_in=is_logged_in)
 
@@ -285,64 +287,68 @@ def shows_update(tvshowid=None):
 
 	tvshows = fetch_query(qry, qargs)
 
-	updated = 0
+	tvdb_token = tvdb.login()
+
 	for n in range(0, 31):
 		# minus 1 day to account for US airdates compared to NZ airdates
 		airdate = (datetime.datetime.today() + datetime.timedelta(days=n - 1)).strftime('%Y-%m-%d')
-		print('Checking date %s' % airdate)
 		for s in tvshows:
-			resp = tvdb.episode_search(s['tvdb_id'], airdate)
-			if resp:
-				print('Found for %s' % s['name'])
-				for r in resp:
-					if r['episodeName'] is None:
-						r['episodeName'] = 'Season %s Episode %s' % (r['airedSeason'], r['airedEpisodeNumber'])
-					r['episodeName'] = strip_unicode_characters(r['episodeName'])
-
-					qry = "SELECT *, (airdate - '1 day'::INTERVAL)::DATE::TEXT AS airdate FROM episode WHERE tvdb_id = %s"
-					existing = fetch_query(qry, (r['id'],), single_row=True)
-					if not existing:
-						# add 1 day to account for US airdates compared to NZ airdates
-						qry = """INSERT INTO episode (tvshowid, seasonnumber, episodenumber, name, airdate, tvdb_id)
-								VALUES (%s, %s, %s, %s, (%s::DATE + '1 day'::INTERVAL), %s) RETURNING id"""
-						qargs = (
-							s['id'], r['airedSeason'], r['airedEpisodeNumber'],
-							strip_unicode_characters(r['episodeName']),
-							r['firstAired'], r['id'],
-						)
-						mutate_query(qry, qargs)
-						updated += 1
-					else:
-						print('%s episode %s is not new' % (s['name'], r['id']))
-						# I didn't like the long if statement
-						checkfor = [
-							{'local': existing['name'], 'remote':r['episodeName']},
-							{'local': existing['airdate'], 'remote':r['firstAired']},
-							{'local': existing['seasonnumber'], 'remote':r['airedSeason']},
-							{'local': existing['episodenumber'], 'remote':r['airedEpisodeNumber']}
-						]
-						changed = False
-						for c in checkfor:
-							if str(c['local']) != str(c['remote']):
-								changed = True
-						if changed:
-							print('%s episode %s has changed' % (s['name'], existing['name']))
-							qry = """UPDATE episode SET name = %s, airdate = (%s::DATE + '1 day'::INTERVAL),
-										seasonnumber = %s, episodenumber = %s
-									WHERE id = %s"""
-							qargs = (
-								strip_unicode_characters(r['episodeName']), r['firstAired'],
-								r['airedSeason'], r['airedEpisodeNumber'], existing['id'],
-							)
-							mutate_query(qry, qargs)
-							updated += 1
+			resync_tvshow.delay(airdate, s, tvdb_token)
 
 	# with tvshowid parameter, is being called from page instead of cron
 	if tvshowid is not None:
-		flash('Updated %s episodes.' % updated, 'success')
+		flash('Updating episodes.', 'success')
 		return redirect(url_for('home'))
 
 	return jsonify(error=error)
+
+
+@celery.task()
+def resync_tvshow(airdate, tvshow, tvdb_token):
+	print('Checking date %s for %s' % (airdate, tvshow['name']))
+	resp = tvdb.episode_search(tvshow['tvdb_id'], airdate, token=tvdb_token)
+	if resp:
+		print('Found for %s' % tvshow['name'])
+		for r in resp:
+			if r['episodeName'] is None:
+				r['episodeName'] = 'Season %s Episode %s' % (r['airedSeason'], r['airedEpisodeNumber'])
+			r['episodeName'] = strip_unicode_characters(r['episodeName'])
+
+			qry = "SELECT *, (airdate - '1 day'::INTERVAL)::DATE::TEXT AS airdate FROM episode WHERE tvdb_id = %s"
+			existing = fetch_query(qry, (r['id'],), single_row=True)
+			if not existing:
+				# add 1 day to account for US airdates compared to NZ airdates
+				qry = """INSERT INTO episode (tvshowid, seasonnumber, episodenumber, name, airdate, tvdb_id)
+						VALUES (%s, %s, %s, %s, (%s::DATE + '1 day'::INTERVAL), %s) RETURNING id"""
+				qargs = (
+					tvshow['id'], r['airedSeason'], r['airedEpisodeNumber'],
+					strip_unicode_characters(r['episodeName']),
+					r['firstAired'], r['id'],
+				)
+				mutate_query(qry, qargs)
+			else:
+				print('%s episode %s is not new' % (tvshow['name'], r['id']))
+				# I didn't like the long if statement
+				checkfor = [
+					{'local': existing['name'], 'remote':r['episodeName']},
+					{'local': existing['airdate'], 'remote':r['firstAired']},
+					{'local': existing['seasonnumber'], 'remote':r['airedSeason']},
+					{'local': existing['episodenumber'], 'remote':r['airedEpisodeNumber']}
+				]
+				changed = False
+				for c in checkfor:
+					if str(c['local']) != str(c['remote']):
+						changed = True
+				if changed:
+					print('%s episode %s has changed' % (tvshow['name'], existing['name']))
+					qry = """UPDATE episode SET name = %s, airdate = (%s::DATE + '1 day'::INTERVAL),
+								seasonnumber = %s, episodenumber = %s
+							WHERE id = %s"""
+					qargs = (
+						strip_unicode_characters(r['episodeName']), r['firstAired'],
+						r['airedSeason'], r['airedEpisodeNumber'], existing['id'],
+					)
+					mutate_query(qry, qargs)
 
 
 @app.route('/movies/update', methods=['GET'])
@@ -350,36 +356,49 @@ def shows_update(tvshowid=None):
 def movies_update(movieid=None):
 	error = None
 
+	qry = "SELECT *, releasedate::TEXT AS releasedate FROM movie"
+	qargs = ()
 	if movieid is not None:
-		qry = "SELECT * FROM movie WHERE id = %s"
-		qargs = (movieid,)
+		qry += " WHERE id = %s"
+		qargs += (movieid,)
 	else:
 		# Only check movies with followers to save time & requests
-		qry = "SELECT * FROM movie WHERE exists(SELECT * FROM watcher_movie WHERE movieid = movie.id AND watched = false) ORDER BY name ASC"
-		qargs = None
+		qry += """ WHERE exists(
+					SELECT 1
+					FROM watcher_movie
+					WHERE movieid = movie.id
+					AND watched = false
+				)"""
+	qry += " ORDER BY name ASC"
 
 	movies = fetch_query(qry, qargs)
 
 	for m in movies:
-		resp = moviedb.get(m['moviedb_id'])
-		changed = False
-		if m['name'] != resp['title']:
-			changed = True
-		if m['releasedate'] is not None:
-			m['releasedate'] = m['releasedate'].strftime("%Y-%m-%d")
-			if m['releasedate'] != resp['release_date']:
-				changed = True
-
-		if changed:
-			print('"%s" (%s) changed to "%s" (%s)' % (m['name'], m['releasedate'], resp['title'], resp['release_date']))
-			qry = "UPDATE movie SET name = %s, releasedate = %s WHERE id = %s"
-			qargs = (resp['title'], resp['release_date'], m['id'],)
-			mutate_query(qry, qargs)
+		resync_movie.delay(m)
 
 	if movieid is not None:
 		return redirect(url_for('movies'))
 
 	return jsonify(error=error)
+
+
+@celery.task()
+def resync_movie(movie):
+	print('Resyncing %s' % movie['name'])
+	resp = moviedb.get(movie['moviedb_id'])
+	changed = False
+	if movie['name'] != resp['title']:
+		changed = True
+	if movie['releasedate'] is not None:
+		movie['releasedate'] = datetime.datetime.strptime(movie['releasedate'], '%Y-%m-%d').strftime("%Y-%m-%d")
+		if movie['releasedate'] != resp['release_date']:
+			changed = True
+
+	if changed:
+		print('"%s" (%s) changed to "%s" (%s)' % (movie['name'], movie['releasedate'], resp['title'], resp['release_date']))
+		qry = "UPDATE movie SET name = %s, releasedate = %s WHERE id = %s"
+		qargs = (resp['title'], resp['release_date'], movie['id'],)
+		mutate_query(qry, qargs)
 
 
 if __name__ == '__main__':

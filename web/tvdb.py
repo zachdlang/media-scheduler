@@ -5,7 +5,7 @@ import json
 from urllib.request import urlretrieve
 
 # Third party imports
-from flask import session, url_for, current_app as app
+from flask import url_for, current_app as app
 from PIL import Image
 
 # Local imports
@@ -38,26 +38,18 @@ def login():
 	resp = json.loads(resp.text)
 	if 'Error' in resp:
 		raise TVDBException(resp['Error'])
-	session['tvdb_token'] = resp['token']
+	return resp['token']
 
 
-def send_request(url, params):
-	if 'tvdb_token' not in session:
-		login()
+def send_request(url, params, token=None):
+	if token is None:
+		token = login()
 	headers = get_headers()
-	headers['Authorization'] = 'Bearer %s' % session['tvdb_token']
+	headers['Authorization'] = 'Bearer %s' % token
 	r = requests.get(url, params=params, headers=headers).text
 	resp = json.loads(r)
 	if 'Error' in resp:
-		if resp['Error'].lower() == 'not authorized':
-			login()
-			# Refresh token and try again
-			headers['Authorization'] = 'Bearer %s' % session['tvdb_token']
-			r = requests.get(url, params=params, headers=headers).text
-			resp = json.loads(r)
-			if 'Error' in resp:
-				raise TVDBException(resp['Error'])
-		elif resp['Error'].lower() == 'resource not found':
+		if resp['Error'].lower() == 'resource not found':
 			# No search results
 			resp['data'] = []
 		else:
@@ -71,10 +63,10 @@ def series_search(name):
 	return resp['data']
 
 
-def episode_search(tvshow_tvdb_id, airdate):
+def episode_search(tvshow_tvdb_id, airdate, token=None):
 	params = {'firstAired': airdate}
 	try:
-		resp = send_request('https://api.thetvdb.com/series/%s/episodes/query' % tvshow_tvdb_id, params)
+		resp = send_request('https://api.thetvdb.com/series/%s/episodes/query' % tvshow_tvdb_id, params, token=token)
 	except TVDBException as e:
 		if 'No results for your query' in str(e):
 			resp = {'data': []}
