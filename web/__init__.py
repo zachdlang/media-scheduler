@@ -15,7 +15,7 @@ from sitetools.utility import (
 	BetterExceptionFlask, is_logged_in, params_to_dict,
 	login_required, strip_unicode_characters, check_login,
 	fetch_query, mutate_query, disconnect_database,
-	handle_exception, setup_celery
+	handle_exception, setup_celery, check_celery_running
 )
 
 app = BetterExceptionFlask(__name__)
@@ -274,6 +274,7 @@ def movies_follow():
 
 @app.route('/shows/update', methods=['GET'])
 @app.route('/shows/update/<int:tvshowid>', methods=['GET'])
+@check_celery_running
 def shows_update(tvshowid=None):
 	error = None
 
@@ -353,6 +354,7 @@ def resync_tvshow(airdate, tvshow, tvdb_token):
 
 @app.route('/movies/update', methods=['GET'])
 @app.route('/movies/update/<int:movieid>', methods=['GET'])
+@check_celery_running
 def movies_update(movieid=None):
 	error = None
 
