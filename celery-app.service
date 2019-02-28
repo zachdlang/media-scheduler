@@ -6,7 +6,7 @@ After=network.target
 User=www-data
 Restart=on-failure
 WorkingDirectory=/var/www/scheduler
-ExecStart=/usr/local/bin/celery worker -A web.celery --workdir /var/www/scheduler --logfile /tmp/scheduler_celery.log --concurrency=10
+ExecStart=/usr/local/bin/celery worker -A web.celery --workdir /var/www/scheduler --logfile /tmp/scheduler_celery.log --concurrency=10 -Q scheduler
 
 [Install]
 WantedBy=multi-user.target

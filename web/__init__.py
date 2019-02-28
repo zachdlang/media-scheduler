@@ -304,7 +304,7 @@ def shows_update(tvshowid=None):
 	return jsonify(error=error)
 
 
-@celery.task()
+@celery.task(queue='scheduler')
 def resync_tvshow(airdate, tvshow, tvdb_token):
 	print('Checking date %s for %s' % (airdate, tvshow['name']))
 	resp = tvdb.episode_search(tvshow['tvdb_id'], airdate, token=tvdb_token)
@@ -384,7 +384,7 @@ def movies_update(movieid=None):
 	return jsonify(error=error)
 
 
-@celery.task()
+@celery.task(queue='scheduler')
 def resync_movie(movie):
 	print('Resyncing %s' % movie['name'])
 	resp = moviedb.get(movie['moviedb_id'])
