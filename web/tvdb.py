@@ -2,14 +2,14 @@
 import os
 import requests
 import json
-from urllib.request import urlretrieve
 
 # Third party imports
 from flask import url_for, current_app as app
-from PIL import Image
 
 # Local imports
-from sitetools.utility import get_static_file
+from sitetools.utility import (
+	get_static_file, fetch_image
+)
 
 
 class TVDBException(Exception):
@@ -82,7 +82,8 @@ def image_search(tvshow_tvdb_id):
 
 
 def get_poster(tvdb_id):
-	if not os.path.exists(get_static_file('/images/poster_%s.jpg' % tvdb_id)):
+	filename = '/images/poster_%s.jpg' % tvdb_id
+	if not os.path.exists(get_static_file(filename)):
 		try:
 			resp = image_search(tvdb_id)
 		except TVDBException as e:
@@ -93,8 +94,6 @@ def get_poster(tvdb_id):
 			for r in resp:
 				if r['ratingsInfo']['average'] > top_poster['ratingsInfo']['average']:
 					top_poster = r
-		urlretrieve('http://thetvdb.com/banners/%s' % top_poster['fileName'], get_static_file('/images/poster_%s.jpg' % tvdb_id))
-		img = Image.open(get_static_file('/images/poster_%s.jpg' % tvdb_id))
-		img_scaled = img.resize((int(img.size[0] / 2), int(img.size[1] / 2)), Image.ANTIALIAS)
-		img_scaled.save(get_static_file('/images/poster_%s.jpg' % tvdb_id), optimize=True, quality=95)
+		url = 'http://thetvdb.com/banners/%s' % top_poster['fileName']
+		fetch_image(filename, url)
 	return url_for('static', filename='images/poster_%s.jpg' % tvdb_id)
