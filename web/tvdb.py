@@ -82,8 +82,8 @@ def image_search(tvshow_tvdb_id):
 
 
 def get_poster(tvdb_id):
-	filename = '/images/poster_%s.jpg' % tvdb_id
-	if not os.path.exists(get_static_file(filename)):
+	filename = get_static_file('/images/poster_%s.jpg' % tvdb_id)
+	if not os.path.exists(filename):
 		try:
 			resp = image_search(tvdb_id)
 		except TVDBException as e:

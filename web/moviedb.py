@@ -49,8 +49,8 @@ def image_search(movie_moviedb_id):
 
 
 def get_poster(moviedb_id):
-	filename = '/images/movie_poster_%s.jpg' % moviedb_id
-	if not os.path.exists(get_static_file(filename)):
+	filename = get_static_file('/images/movie_poster_%s.jpg' % moviedb_id)
+	if not os.path.exists(filename):
 		resp = image_search(moviedb_id)
 		poster_path = resp['poster_path']
 		if poster_path:
