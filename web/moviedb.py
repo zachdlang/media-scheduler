@@ -17,7 +17,7 @@ class MovieDBException(Exception):
 
 
 def send_request(url, params):
-	params['api_key'] = app.config['MOVIEDB_APIKEY']
+	params['api_key'] = config.MOVIEDB_APIKEY
 	r = requests.get(url, params=params).text
 	resp = json.loads(r)
 	return resp

@@ -27,9 +27,9 @@ def get_headers():
 
 def login():
 	data = {
-		'apikey': app.config['TVDB_APIKEY'],
-		'userkey': app.config['TVDB_USERKEY'],
-		'username': app.config['TVDB_USERNAME']
+		'apikey': config.TVDB_APIKEY,
+		'userkey': config.TVDB_USERKEY,
+		'username': config.TVDB_USERNAME
 	}
 	headers = get_headers()
 	resp = requests.post('https://api.thetvdb.com/login', data=json.dumps(data), headers=headers)

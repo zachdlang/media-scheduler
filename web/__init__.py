@@ -1,38 +1,36 @@
 # Standard library imports
 import datetime
-import logging
-from logging.handlers import SMTPHandler
 
 # Third party imports
 from flask import (
 	send_from_directory, request, session, url_for, redirect,
-	flash, render_template, jsonify
+	flash, render_template, jsonify, Flask
 )
 
 # Local imports
-from web import tvdb, moviedb
+from web import tvdb, moviedb, config
 from sitetools.utility import (
-	BetterExceptionFlask, is_logged_in, params_to_dict,
+	is_logged_in, params_to_dict,
 	login_required, strip_unicode_characters, check_login,
 	fetch_query, mutate_query, disconnect_database,
 	handle_exception, setup_celery, check_celery_running
 )
 
-app = BetterExceptionFlask(__name__)
+import sentry_sdk
+from sentry_sdk.integrations.flask import FlaskIntegration
 
-app.config.from_pyfile('site_config.cfg')
-app.secret_key = app.config['SECRETKEY']
+sentry_sdk.init(
+	dsn=config.SENTRY_DSN,
+	integrations=[FlaskIntegration()]
+)
+
+app = Flask(__name__)
+
+app.secret_key = config.SECRETKEY
 
 celery = setup_celery(app)
 
 app.jinja_env.globals.update(is_logged_in=is_logged_in)
-
-if not app.debug:
-	ADMINISTRATORS = [app.config['TO_EMAIL']]
-	msg = 'Internal Error on scheduler'
-	mail_handler = SMTPHandler('127.0.0.1', app.config['FROM_EMAIL'], ADMINISTRATORS, msg)
-	mail_handler.setLevel(logging.CRITICAL)
-	app.logger.addHandler(mail_handler)
 
 
 @app.errorhandler(500)
