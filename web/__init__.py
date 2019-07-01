@@ -6,6 +6,9 @@ from flask import (
 	send_from_directory, request, session, url_for, redirect,
 	flash, render_template, jsonify, Flask
 )
+import sentry_sdk
+from sentry_sdk.integrations.flask import FlaskIntegration
+from sentry_sdk.integrations.celery import CeleryIntegration
 
 # Local imports
 from web import tvdb, moviedb, config
@@ -16,12 +19,15 @@ from sitetools.utility import (
 	handle_exception, setup_celery, check_celery_running
 )
 
-import sentry_sdk
-from sentry_sdk.integrations.flask import FlaskIntegration
 
 sentry_sdk.init(
 	dsn=config.SENTRY_DSN,
 	integrations=[FlaskIntegration()]
+)
+
+sentry_sdk.init(
+	dsn=config.CELERY_SENTRY_DSN,
+	integrations=[CeleryIntegration()]
 )
 
 app = Flask(__name__)

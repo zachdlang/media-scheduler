@@ -4,9 +4,10 @@ import json
 import os
 
 # Third party imports
-from flask import url_for, current_app as app
+from flask import url_for
 
 # Local imports
+from web import config
 from sitetools.utility import (
 	get_static_file, fetch_image
 )
