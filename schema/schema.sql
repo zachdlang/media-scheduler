@@ -15,16 +15,6 @@ CREATE TABLE IF NOT EXISTS episode (
 	tvdb_id INTEGER NOT NULL
 )WITH OIDS;
 
-CREATE TABLE IF NOT EXISTS enduser (
-	id SERIAL primary key,
-	firstname TEXT NOT NULL,
-	surname TEXT NOT NULL,
-	email TEXT NOT NULL,
-	username TEXT NOT NULL,
-	password TEXT NOT NULL,
-	ipaddr INET
-)WITH OIDS;
-
 CREATE TABLE IF NOT EXISTS watcher_tvshow (
 	id SERIAL primary key,
 	tvshowid INTEGER NOT NULL REFERENCES tvshow(id) ON DELETE CASCADE,
