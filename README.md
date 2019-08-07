@@ -1,5 +1,7 @@
 # media-scheduler
 
+[![CircleCI](https://circleci.com/gh/zachdlang/media-scheduler/tree/master.svg?style=svg)](https://circleci.com/gh/zachdlang/media-scheduler/tree/master)
+
 ## Service Setup
 1. Copy the service files, so Gunicorn & Celery can be automatically started & reloaded.
 	
