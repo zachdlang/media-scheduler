@@ -2,11 +2,18 @@ language: python
 python:
   - "3.6"
 
+cache:
+  directories:
+    - $HOME/.cache/pip
+    - $HOME/build/zachdlang/sitetools
+
 install:
   - pip install -r requirements.txt
   - pip install pytest
 
 jobs:
   include:
+    - stage: build
+      script: ./.travis/install-sitetools.sh
     - stage: test
-      script: pytest
+      script: ./.travis/create-test-config.sh && pytest
