@@ -68,7 +68,7 @@
 				data: { 'search':$('#follow_search').val() }
 			}).done(function(data) {
 				if (data.error) {
-					show_flash(data.error, 'danger');
+					showError(data.error);
 				} else {
 					var s_html = '';
 					for (var i=0; i < data.result.length; i++) {
@@ -84,9 +84,7 @@
 					}
 					$('#follow_search_result').removeClass('hidden').html(s_html);
 				}
-			}).fail(function() {
-				handle_internal_error();
-			});
+			}).fail(ajaxFailed);
 		}
 	}
 
@@ -98,15 +96,13 @@
 			data: { 'tvdb_id':row.data()['tvdb_id'], 'name':row.data()['name'] }
 		}).done(function(data) {
 			if (data.error) {
-				show_flash(data.error, 'danger');
+				showError(data.error);
 			} else {
 				get_shows();
-				show_flash('Successfully added.', 'success');
+				showSuccess('Successfully added.');
 				$('#follow_search').val('').focus();
 			}
-		}).fail(function() {
-			handle_internal_error();
-		});
+		}).fail(ajaxFailed);
 	});
 
 	function get_shows() {
@@ -132,9 +128,7 @@
 			}
 			$('#content').html(c_html);
 			$('#followed').html('('+data.shows.length+')');
-		}).fail(function() {
-			handle_internal_error();
-		});
+		}).fail(ajaxFailed);
 	}
 
 	$('#content').on('click', '.confirm_remove', function() {
@@ -145,14 +139,12 @@
 			data: { 'tvshowid':row.data()['tvshowid'] }
 		}).done(function(data) {
 			if (data.error) {
-				show_flash(data.error, 'danger');
+				showError(data.error);
 			} else {
-				show_flash('Successfully removed.', 'success');
+				showSuccess('Successfully removed.');
 				row.remove();
 			}
-		}).fail(function() {
-			handle_internal_error();
-		});
+		}).fail(ajaxFailed);
 	});
 
 	$('#content').on('click', '.remove_show', function() {

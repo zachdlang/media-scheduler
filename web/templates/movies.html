@@ -68,7 +68,7 @@
 				data: { 'search':$('#follow_search').val() }
 			}).done(function(data) {
 				if (data.error) {
-					show_flash(data.error, 'danger');
+					showError(data.error);
 				} else {
 					var m_html = '';
 					for (var i=0; i < data.result.length; i++) {
@@ -84,9 +84,7 @@
 					}
 					$('#follow_search_result').removeClass('hidden').html(m_html);
 				}
-			}).fail(function() {
-				handle_internal_error();
-			});
+			}).fail(ajaxFailed);
 		}
 	}
 
@@ -98,15 +96,13 @@
 			data: { 'moviedb_id':row.data()['moviedb_id'], 'name':row.data()['name'], 'releasedate':row.data()['releasedate'] }
 		}).done(function(data) {
 			if (data.error) {
-				show_flash(data.error, 'danger');
+				showError(data.error);
 			} else {
 				get_movies();
-				show_flash('Successfully added.', 'success');
+				showSuccess('Successfully added.');
 				$('#follow_search').val('').focus();
 			}
-		}).fail(function() {
-			handle_internal_error();
-		});
+		}).fail(ajaxFailed);
 	});
 
 	function get_movies() {
@@ -139,9 +135,7 @@
 			}
 			$('#content').html(c_html);
 			$('#followed').html('('+count+')');
-		}).fail(function() {
-			handle_internal_error();
-		});
+		}).fail(ajaxFailed);
 	}
 
 	function gen_movie(m) {
@@ -166,16 +160,14 @@
 			data: { 'movieid':row.data()['movieid'] }
 		}).done(function(data) {
 			if (data.error) {
-				show_flash(data.error, 'danger');
+				showError(data.error);
 			} else {
 				row.remove();
 				$('.date').each(function() {
 					if ($(this).find('.movie').length <= 0) $(this).remove();
 				});
 			}
-		}).fail(function() {
-			handle_internal_error();
-		});
+		}).fail(ajaxFailed);
 	});
 </script>
 {% endblock %}

@@ -28,7 +28,7 @@
 				<div id="loader" class="hidden"></div> 
 				<div id="flash_div">
 					{% for category, message in get_flashed_messages(with_categories=true) %}
-						<div class="alert alert-{{ category }} alert-dismissable"><button type="button" class="close" data-dismiss="alert" aria-hidden="true">&times;</button>{{ message }}</div>
+						<div class="alert alert-{{ category }}">{{ message }}</div>
 					{% endfor %}
 				</div>
 				{% block content %}
@@ -36,45 +36,20 @@
 			</div>
 
 			<footer class="footer">
-				<p>&copy; 2017 Zach Lang</p>
+				<a class="pull-left" href="https://github.com/zachdlang/media-scheduler">
+					<img class="img-responsive footer-logo" src="{{ url_for('static', filename='img/github.png') }}">
+				</a>
+				<span class="footer-note">By Zach Lang</span>
 			</footer>
 		</div>
 
 		<script src="{{ url_for('static', filename='js/jquery.min.js') }}"></script>
 		<script src="{{ url_for('static', filename='js/bootstrap.min.js') }}"></script>
+		<script src="{{ url_for('static', filename='js/functions.js') }}"></script>
 
 		<script>
-			$(document).ajaxStart(function() {
-				$('#loader').removeClass('hidden');
-			});
-
-			$(document).ajaxStop(function() {
-				$('#loader').addClass('hidden');
-			});
-
-			function escapeHTML(str) {
-				var escapes = {
-					'&': '&amp;',
-					'<': '&lt;',
-					'>': '&gt;',
-					'"': '&quot;',
-					"'": '&#x27;'
-				};
-				return ('' + str).replace(/[&<>"']/g, function(match) {
-					return escapes[match];
-				});
-			}
-
-			function handle_internal_error() {
-				show_flash('Internal error occurred.', 'danger');
-			}
-
-			function show_flash(message, flash_class) {
-				if ($('.modal.in').length) elem = $('#modal_flash_div');
-				else elem = $('#flash_div');
-				elem.empty();
-				elem.html('<div class="alert alert-'+flash_class+' alert-dismissable"><button type="button" class="close" data-dismiss="alert" aria-hidden="true">&times;</button>'+message+'</div>');
-			}
+			$(document).ajaxStart(showLoading);
+			$(document).ajaxStop(hideLoading);
 		</script>
 
 		{% block script %}

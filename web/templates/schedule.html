@@ -61,16 +61,14 @@
 			data: { 'episodeid':row.data()['episodeid'] }
 		}).done(function(data) {
 			if (data.error) {
-				show_flash(data.error, 'danger');
+				showError(data.error);
 			} else {
 				row.remove();
 				$('.date, .outstanding-episodes').each(function() {
 					if ($(this).find('.show').length <= 0) $(this).remove();
 				});
 			}
-		}).fail(function() {
-			handle_internal_error();
-		});
+		}).fail(ajaxFailed);
 	});
 
 	$('#outstanding').on('show.bs.collapse', function() {

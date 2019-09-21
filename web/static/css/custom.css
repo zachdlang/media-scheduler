@@ -30,6 +30,14 @@ body {
 	margin-top: 30px;
 }
 
+.footer .footer-logo {
+	max-height: 20px;
+}
+
+.footer .footer-note {
+	margin-left: 5px;
+}
+
 .container .row .heading {
 	text-align: center;
 	margin-bottom: 20px;
