@@ -1,5 +1,5 @@
 # Standard library imports
-import datetime
+from datetime import datetime, timedelta
 
 # Third party imports
 from flask import (
@@ -106,7 +106,12 @@ def home() -> Response:
 		if e['in_past'] is False and e['airdate_str'] not in dates:
 			dates.append(e['airdate_str'])
 		e['poster'] = tvdb.get_poster(e['show_tvdb_id'])
-	return render_template('schedule.html', outstanding=outstanding, dates=dates, episodes=episodes)
+	return render_template(
+		'schedule.html',
+		outstanding=outstanding,
+		dates=dates,
+		episodes=episodes
+	)
 
 
 @app.route('/shows/watched', methods=['POST'])
@@ -116,7 +121,10 @@ def shows_watched() -> Response:
 	params = params_to_dict(request.form)
 	episodeid = params.get('episodeid')
 	if episodeid:
-		mutate_query("SELECT mark_episode_watched(%s, %s)", (session['userid'], episodeid,))
+		mutate_query(
+			"SELECT mark_episode_watched(%s, %s)",
+			(session['userid'], episodeid,)
+		)
 	else:
 		error = 'Please select an episode.'
 	return jsonify(error=error)
@@ -131,8 +139,16 @@ def shows() -> Response:
 @app.route('/shows/list', methods=['GET'])
 @login_required
 def shows_list() -> Response:
-	qry = "SELECT id, tvdb_id, name FROM tvshow WHERE follows_tvshow(%s, id) ORDER BY name ASC"
-	shows = fetch_query(qry, (session['userid'],))
+	shows = fetch_query(
+		"""
+		SELECT
+			id, tvdb_id, name
+		FROM tvshow
+		WHERE follows_tvshow(%s, id)
+		ORDER BY name ASC
+		""",
+		(session['userid'],)
+	)
 	for s in shows:
 		s['poster'] = tvdb.get_poster(s['tvdb_id'])
 		s['update_url'] = url_for('shows_update', tvshowid=s['id'])
@@ -150,7 +166,9 @@ def shows_search() -> Response:
 	if search:
 		resp = tvdb.series_search(search)
 		for r in resp:
-			year = datetime.datetime.strptime(r['firstAired'], '%Y-%m-%d').year if r['firstAired'] else None
+			year = None
+			if r['firstAired']:
+				year = datetime.strptime(r['firstAired'], '%Y-%m-%d').year
 			result.append({
 				'id': r['id'],
 				'name': r['seriesName'],
@@ -168,11 +186,18 @@ def shows_follow() -> Response:
 	tvdb_id = params.get('tvdb_id')
 	name = params.get('name')
 	if tvdb_id and name:
-		tvshow = fetch_query("SELECT id FROM tvshow WHERE tvdb_id = %s", (tvdb_id,), single_row=True)
+		tvshow = fetch_query(
+			"SELECT id FROM tvshow WHERE tvdb_id = %s",
+			(tvdb_id,),
+			single_row=True
+		)
 		if not tvshow:
 			qry = "INSERT INTO tvshow (name, tvdb_id) VALUES (%s, %s) RETURNING id"
 			tvshow = mutate_query(qry, (name, tvdb_id,), returning=True)
-		mutate_query("SELECT add_watcher_tvshow(%s, %s)", (session['userid'], tvshow['id'],))
+		mutate_query(
+			"SELECT add_watcher_tvshow(%s, %s)",
+			(session['userid'], tvshow['id'],)
+		)
 		tvdb.get_poster(tvdb_id)
 	else:
 		error = 'Please select a show.'
@@ -186,7 +211,10 @@ def shows_unfollow() -> Response:
 	params = params_to_dict(request.form)
 	tvshowid = params.get('tvshowid')
 	if tvshowid:
-		mutate_query("SELECT remove_watcher_tvshow(%s, %s)", (session['userid'], tvshowid,))
+		mutate_query(
+			"SELECT remove_watcher_tvshow(%s, %s)",
+			(session['userid'], tvshowid,)
+		)
 	else:
 		error = 'Please select a show.'
 	return jsonify(error=error)
@@ -201,17 +229,23 @@ def movies() -> Response:
 @app.route('/movies/list', methods=['GET'])
 @login_required
 def movies_list() -> Response:
-	qry = """SELECT m.*,
-				COALESCE(to_char(m.releasedate, 'DD/MM/YYYY'), 'TBD') AS releasedate_str,
-				m.releasedate < current_date AS in_past
-			FROM movie m
-			WHERE follows_movie(%s, m.id)
-			ORDER BY m.releasedate NULLS LAST, m.name"""
-	movies = fetch_query(qry, (session['userid'],))
+	movies = fetch_query(
+		"""
+		SELECT
+			m.id, m.name, m.moviedb_id,
+			COALESCE(to_char(m.releasedate, 'DD/MM/YYYY'), 'TBD') AS releasedate_str,
+			m.releasedate < current_date AS in_past
+		FROM movie m
+		WHERE follows_movie(%s, m.id)
+		ORDER BY m.releasedate NULLS LAST, m.name
+		""",
+		(session['userid'],)
+	)
 	outstanding = []
 	dates = []
 	for m in movies:
-		if m['in_past'] is False and m['releasedate_str'] not in [x['date'] for x in dates]:
+		existing_date = m['releasedate_str'] in [x['date'] for x in dates]
+		if m['in_past'] is False and not existing_date:
 			dates.append({'date': m['releasedate_str']})
 		elif m['in_past'] is True:
 			outstanding.append(m)
@@ -235,7 +269,10 @@ def movies_watched() -> Response:
 	params = params_to_dict(request.form)
 	movieid = params.get('movieid')
 	if movieid:
-		mutate_query("SELECT mark_movie_watched(%s, %s)", (session['userid'], movieid,))
+		mutate_query(
+			"SELECT mark_movie_watched(%s, %s)",
+			(session['userid'], movieid,)
+		)
 	else:
 		error = 'Please select an movie.'
 	return jsonify(error=error)
@@ -251,7 +288,10 @@ def movies_search() -> Response:
 	if search:
 		resp = moviedb.search(search)
 		for r in resp:
-			year = datetime.datetime.strptime(r['release_date'], '%Y-%m-%d').year if r['release_date'] else None
+			year = None
+			if r['release_date']:
+				year = datetime.strptime(r['release_date'], '%Y-%m-%d').year
+
 			result.append({
 				'id': r['id'],
 				'name': r['title'],
@@ -271,11 +311,27 @@ def movies_follow() -> Response:
 	name = params.get('name')
 	releasedate = params.get('releasedate')
 	if moviedb_id and name:
-		movie = fetch_query("SELECT * FROM movie WHERE moviedb_id = %s", (moviedb_id,), single_row=True)
+		movie = fetch_query(
+			"SELECT * FROM movie WHERE moviedb_id = %s",
+			(moviedb_id,),
+			single_row=True
+		)
 		if not movie:
-			qry = "INSERT INTO movie (name, releasedate, moviedb_id) VALUES (%s, %s, %s) RETURNING id"
-			movie = mutate_query(qry, (name, releasedate, moviedb_id,), returning=True)
-		mutate_query("SELECT add_watcher_movie(%s, %s)", (session['userid'], movie['id'],))
+			movie = mutate_query(
+				"""
+				INSERT INTO movie (
+					name, releasedate, moviedb_id
+				) VALUES (
+					%s, %s, %s
+				) RETURNING id
+				""",
+				(name, releasedate, moviedb_id,),
+				returning=True
+			)
+		mutate_query(
+			"SELECT add_watcher_movie(%s, %s)",
+			(session['userid'], movie['id'],)
+		)
 		moviedb.get_poster(moviedb_id)
 	else:
 		error = 'Please select a show.'
@@ -289,20 +345,28 @@ def shows_update(tvshowid: int = None) -> Response:
 	error = None
 
 	if tvshowid is not None:
-		qry = "SELECT * FROM tvshow WHERE id = %s"
-		qargs = (tvshowid,)
+		tvshows = fetch_query(
+			"SELECT id, name, tvdb_id FROM tvshow WHERE id = %s",
+			(tvshowid,)
+		)
 	else:
 		# Only check shows with followers to save time & requests
-		qry = "SELECT * FROM tvshow WHERE exists(SELECT * FROM watcher_tvshow WHERE tvshowid = tvshow.id) ORDER BY name ASC"
-		qargs = None
-
-	tvshows = fetch_query(qry, qargs)
+		tvshows = fetch_query(
+			"""
+			SELECT
+				id, name, tvdb_id
+			FROM tvshow
+			WHERE exists(
+				SELECT * FROM watcher_tvshow WHERE tvshowid = tvshow.id
+			) ORDER BY name ASC
+			"""
+		)
 
 	tvdb_token = tvdb.login()
 
 	for n in range(0, 31):
 		# minus 1 day to account for US airdates compared to NZ airdates
-		airdate = (datetime.datetime.today() + datetime.timedelta(days=n - 1)).strftime('%Y-%m-%d')
+		airdate = (datetime.today() + timedelta(days=n - 1)).strftime('%Y-%m-%d')
 		for s in tvshows:
 			resync_tvshow.delay(airdate, s, tvdb_token)
 
@@ -316,29 +380,49 @@ def shows_update(tvshowid: int = None) -> Response:
 
 @celery.task(queue='scheduler')
 def resync_tvshow(airdate: str, tvshow: dict, tvdb_token: str) -> None:
-	print('Checking date %s for %s' % (airdate, tvshow['name']))
+	print('Checking date {} for {}'.format(airdate, tvshow['name']))
 	resp = tvdb.episode_search(tvshow['tvdb_id'], airdate, token=tvdb_token)
 	if resp:
 		print('Found for %s' % tvshow['name'])
 		for r in resp:
 			if r['episodeName'] is None:
-				r['episodeName'] = 'Season %s Episode %s' % (r['airedSeason'], r['airedEpisodeNumber'])
+				r['episodeName'] = 'Season {} Episode {}'.format(
+					r['airedSeason'], r['airedEpisodeNumber']
+				)
 			r['episodeName'] = strip_unicode_characters(r['episodeName'])
 
-			qry = "SELECT *, (airdate - '1 day'::INTERVAL)::DATE::TEXT AS airdate FROM episode WHERE tvdb_id = %s"
-			existing = fetch_query(qry, (r['id'],), single_row=True)
+			existing = fetch_query(
+				"""
+				SELECT
+					*,
+					(airdate - '1 day'::INTERVAL)::DATE::TEXT AS airdate
+				FROM episode
+				WHERE tvdb_id = %s
+				""",
+				(r['id'],),
+				single_row=True
+			)
 			if not existing:
 				# add 1 day to account for US airdates compared to NZ airdates
-				qry = """INSERT INTO episode (tvshowid, seasonnumber, episodenumber, name, airdate, tvdb_id)
-						VALUES (%s, %s, %s, %s, (%s::DATE + '1 day'::INTERVAL), %s) RETURNING id"""
-				qargs = (
-					tvshow['id'], r['airedSeason'], r['airedEpisodeNumber'],
-					strip_unicode_characters(r['episodeName']),
-					r['firstAired'], r['id'],
+				mutate_query(
+					"""
+					INSERT INTO episode (
+						tvshowid, seasonnumber, episodenumber, name, airdate, tvdb_id
+					) VALUES (
+						%s, %s, %s, %s, (%s::DATE + '1 day'::INTERVAL), %s
+					) RETURNING id
+					""",
+					(
+						tvshow['id'],
+						r['airedSeason'],
+						r['airedEpisodeNumber'],
+						strip_unicode_characters(r['episodeName']),
+						r['firstAired'],
+						r['id'],
+					)
 				)
-				mutate_query(qry, qargs)
 			else:
-				print('%s episode %s is not new' % (tvshow['name'], r['id']))
+				print('{} episode {} is not new'.format(tvshow['name'], r['id']))
 				# I didn't like the long if statement
 				checkfor = [
 					{'local': existing['name'], 'remote':r['episodeName']},
@@ -351,15 +435,28 @@ def resync_tvshow(airdate: str, tvshow: dict, tvdb_token: str) -> None:
 					if str(c['local']) != str(c['remote']):
 						changed = True
 				if changed:
-					print('%s episode %s has changed' % (tvshow['name'], existing['name']))
-					qry = """UPDATE episode SET name = %s, airdate = (%s::DATE + '1 day'::INTERVAL),
-								seasonnumber = %s, episodenumber = %s
-							WHERE id = %s"""
-					qargs = (
-						strip_unicode_characters(r['episodeName']), r['firstAired'],
-						r['airedSeason'], r['airedEpisodeNumber'], existing['id'],
+					print(
+						'{} episode {} has changed'.format(
+							tvshow['name'], existing['name']
+						)
 					)
-					mutate_query(qry, qargs)
+					mutate_query(
+						"""
+						UPDATE episode SET
+							name = %s,
+							airdate = (%s::DATE + '1 day'::INTERVAL),
+							seasonnumber = %s,
+							episodenumber = %s
+						WHERE id = %s
+						""",
+						(
+							strip_unicode_characters(r['episodeName']),
+							r['firstAired'],
+							r['airedSeason'],
+							r['airedEpisodeNumber'],
+							existing['id'],
+						)
+					)
 
 
 @app.route('/movies/update', methods=['GET'])
@@ -396,18 +493,24 @@ def movies_update(movieid: int = None) -> Response:
 
 @celery.task(queue='scheduler')
 def resync_movie(movie: dict) -> None:
-	print('Resyncing %s' % movie['name'])
+	print('Resyncing {}'.format(movie['name']))
 	resp = moviedb.get(movie['moviedb_id'])
 	changed = False
 	if movie['name'] != resp['title']:
 		changed = True
 	if movie['releasedate'] is not None:
-		movie['releasedate'] = datetime.datetime.strptime(movie['releasedate'], '%Y-%m-%d').strftime("%Y-%m-%d")
 		if movie['releasedate'] != resp['release_date']:
 			changed = True
 
 	if changed:
-		print('"{}" ({}) changed to "{}" ({})'.format(movie['name'], movie['releasedate'], resp['title'], resp['release_date']))
+		print(
+			'"{}" ({}) changed to "{}" ({})'.format(
+				movie['name'],
+				movie['releasedate'],
+				resp['title'],
+				resp['release_date']
+			)
+		)
 		mutate_query(
 			"UPDATE movie SET name = %s, releasedate = %s WHERE id = %s",
 			(resp['title'], resp['release_date'], movie['id'],)

@@ -33,7 +33,11 @@ def login() -> str:
 		'username': config.TVDB_USERNAME
 	}
 	headers = get_headers()
-	resp = requests.post('https://api.thetvdb.com/login', data=json.dumps(data), headers=headers)
+	resp = requests.post(
+		'https://api.thetvdb.com/login',
+		data=json.dumps(data),
+		headers=headers
+	)
 	if resp.status_code == 503:
 		raise TVDBException('TVDB currently down. Please try again later.')
 	resp = json.loads(resp.text)
@@ -46,7 +50,7 @@ def _send_request(endpoint: str, params: dict, token: str = None) -> any:
 	if token is None:
 		token = login()
 	headers = get_headers()
-	headers['Authorization'] = 'Bearer %s' % token
+	headers['Authorization'] = 'Bearer {}'.format(token)
 	r = requests.get(
 		'https://api.thetvdb.com{}'.format(endpoint),
 		params=params,
@@ -68,10 +72,18 @@ def series_search(name: str) -> list:
 	return resp['data']
 
 
-def episode_search(tvshow_tvdb_id: int, airdate: str, token: str = None) -> list:
+def episode_search(
+	tvshow_tvdb_id: int,
+	airdate: str,
+	token: str = None
+) -> list:
 	params = {'firstAired': airdate}
 	try:
-		resp = _send_request('/series/%s/episodes/query' % tvshow_tvdb_id, params, token=token)
+		resp = _send_request(
+			'/series/{}/episodes/query'.format(tvshow_tvdb_id),
+			params,
+			token=token
+		)
 	except TVDBException as e:
 		if 'No results for your query' in str(e):
 			resp = {'data': []}
@@ -82,12 +94,12 @@ def episode_search(tvshow_tvdb_id: int, airdate: str, token: str = None) -> list
 
 def image_search(tvshow_tvdb_id: int) -> list:
 	params = {'keyType': 'poster'}
-	resp = _send_request('/series/%s/images/query' % tvshow_tvdb_id, params)
+	resp = _send_request('/series/{}/images/query'.format(tvshow_tvdb_id, params))
 	return resp['data']
 
 
 def get_poster(tvdb_id: int) -> Response:
-	filename = get_static_file('/images/poster_%s.jpg' % tvdb_id)
+	filename = get_static_file('/images/poster_{}.jpg'.format(tvdb_id))
 	if not os.path.exists(filename):
 		try:
 			resp = image_search(tvdb_id)
@@ -99,6 +111,6 @@ def get_poster(tvdb_id: int) -> Response:
 			for r in resp:
 				if r['ratingsInfo']['average'] > top_poster['ratingsInfo']['average']:
 					top_poster = r
-		url = 'http://thetvdb.com/banners/%s' % top_poster['fileName']
+		url = 'http://thetvdb.com/banners/{}'.format(top_poster['fileName'])
 		fetch_image(filename, url)
-	return url_for('static', filename='images/poster_%s.jpg' % tvdb_id)
+	return url_for('static', filename='images/poster_{}.jpg'.format(tvdb_id))
