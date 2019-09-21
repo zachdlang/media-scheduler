@@ -35,7 +35,7 @@ def search(name: str) -> list:
 
 def get(movie_moviedb_id: int) -> dict:
 	params = {}
-	resp = _send_request('/movie/{}'.format(movie_moviedb_id, params))
+	resp = _send_request('/movie/{}'.format(movie_moviedb_id), params)
 	return resp
 
 
