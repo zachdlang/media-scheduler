@@ -4,7 +4,7 @@ import json
 import os
 
 # Third party imports
-from flask import url_for
+from flask import url_for, Response
 
 # Local imports
 from web import config
@@ -17,29 +17,32 @@ class MovieDBException(Exception):
 	pass
 
 
-def send_request(url, params):
+def _send_request(endpoint: str, params: dict) -> any:
 	params['api_key'] = config.MOVIEDB_APIKEY
-	r = requests.get(url, params=params).text
+	r = requests.get(
+		'https://api.themoviedb.org/3{}'.format(endpoint),
+		params=params
+	).text
 	resp = json.loads(r)
 	return resp
 
 
-def search(name):
+def search(name: str) -> list:
 	params = {'query': name}
-	resp = send_request('https://api.themoviedb.org/3/search/movie', params)
+	resp = _send_request('/search/movie', params)
 	return resp['results']
 
 
-def get(movie_moviedb_id):
+def get(movie_moviedb_id: int) -> dict:
 	params = {}
-	resp = send_request('https://api.themoviedb.org/3/movie/%s' % movie_moviedb_id, params)
+	resp = _send_request('/movie/%s' % movie_moviedb_id, params)
 	return resp
 
 
-def image_search(movie_moviedb_id):
+def image_search(movie_moviedb_id: int) -> dict:
 	resp = get(movie_moviedb_id)
 	params = {}
-	conf = send_request('https://api.themoviedb.org/3/configuration', params)
+	conf = _send_request('/configuration', params)
 	size = None
 	for s in conf['images']['poster_sizes']:
 		if size is None and 'w' in s and int(s.replace('w', '')) >= 500:
@@ -49,7 +52,7 @@ def image_search(movie_moviedb_id):
 	return resp
 
 
-def get_poster(moviedb_id):
+def get_poster(moviedb_id: int) -> Response:
 	filename = get_static_file('/images/movie_poster_%s.jpg' % moviedb_id)
 	if not os.path.exists(filename):
 		resp = image_search(moviedb_id)

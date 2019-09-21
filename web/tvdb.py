@@ -4,7 +4,7 @@ import requests
 import json
 
 # Third party imports
-from flask import url_for
+from flask import url_for, Response
 
 # Local imports
 from web import config
@@ -17,7 +17,7 @@ class TVDBException(Exception):
 	pass
 
 
-def get_headers():
+def get_headers() -> dict:
 	headers = {
 		'Content-Type': 'application/json',
 		'Accept': 'application/json',
@@ -26,7 +26,7 @@ def get_headers():
 	return headers
 
 
-def login():
+def login() -> str:
 	data = {
 		'apikey': config.TVDB_APIKEY,
 		'userkey': config.TVDB_USERKEY,
@@ -42,12 +42,16 @@ def login():
 	return resp['token']
 
 
-def send_request(url, params, token=None):
+def _send_request(endpoint: str, params: dict, token: str = None) -> any:
 	if token is None:
 		token = login()
 	headers = get_headers()
 	headers['Authorization'] = 'Bearer %s' % token
-	r = requests.get(url, params=params, headers=headers).text
+	r = requests.get(
+		'https://api.thetvdb.com{}'.format(endpoint),
+		params=params,
+		headers=headers
+	).text
 	resp = json.loads(r)
 	if 'Error' in resp:
 		if resp['Error'].lower() == 'resource not found':
@@ -58,16 +62,16 @@ def send_request(url, params, token=None):
 	return resp
 
 
-def series_search(name):
+def series_search(name: str) -> list:
 	params = {'name': name}
-	resp = send_request('https://api.thetvdb.com/search/series', params)
+	resp = _send_request('/search/series', params)
 	return resp['data']
 
 
-def episode_search(tvshow_tvdb_id, airdate, token=None):
+def episode_search(tvshow_tvdb_id: int, airdate: str, token: str = None) -> list:
 	params = {'firstAired': airdate}
 	try:
-		resp = send_request('https://api.thetvdb.com/series/%s/episodes/query' % tvshow_tvdb_id, params, token=token)
+		resp = _send_request('/series/%s/episodes/query' % tvshow_tvdb_id, params, token=token)
 	except TVDBException as e:
 		if 'No results for your query' in str(e):
 			resp = {'data': []}
@@ -76,13 +80,13 @@ def episode_search(tvshow_tvdb_id, airdate, token=None):
 	return resp['data']
 
 
-def image_search(tvshow_tvdb_id):
+def image_search(tvshow_tvdb_id: int) -> list:
 	params = {'keyType': 'poster'}
-	resp = send_request('https://api.thetvdb.com/series/%s/images/query' % tvshow_tvdb_id, params)
+	resp = _send_request('/series/%s/images/query' % tvshow_tvdb_id, params)
 	return resp['data']
 
 
-def get_poster(tvdb_id):
+def get_poster(tvdb_id: int) -> Response:
 	filename = get_static_file('/images/poster_%s.jpg' % tvdb_id)
 	if not os.path.exists(filename):
 		try:

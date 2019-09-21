@@ -4,7 +4,7 @@ import datetime
 # Third party imports
 from flask import (
 	send_from_directory, request, session, url_for, redirect,
-	flash, render_template, jsonify, Flask
+	flash, render_template, jsonify, Flask, Response
 )
 import sentry_sdk
 from sentry_sdk.integrations.flask import FlaskIntegration
@@ -41,29 +41,29 @@ app.jinja_env.globals.update(is_logged_in=is_logged_in)
 
 
 @app.errorhandler(500)
-def internal_error(e):
+def internal_error(e: Exception) -> Response:
 	return handle_exception()
 
 
 @app.teardown_appcontext
-def teardown(error):
+def teardown(e: Exception) -> Response:
 	disconnect_database()
 
 
 @app.route('/ping')
-def ping():
+def ping() -> Response:
 	return jsonify(ping='pong')
 
 
 @app.route('/favicon.ico')
 @app.route('/robots.txt')
 @app.route('/sitemap.xml')
-def static_from_root():
+def static_from_root() -> Response:
 	return send_from_directory(app.static_folder, request.path[1:])
 
 
 @app.route('/login', methods=['GET', 'POST'])
-def login():
+def login() -> Response:
 	if is_logged_in():
 		return redirect(url_for('home'))
 
@@ -82,14 +82,14 @@ def login():
 
 
 @app.route('/logout', methods=['GET'])
-def logout():
+def logout() -> Response:
 	session.pop('userid', None)
 	return redirect(url_for('login'))
 
 
 @app.route('/', methods=['GET'])
 @login_required
-def home():
+def home() -> Response:
 	qry = """SELECT e.*,
 				s.name AS show_name,
 				s.tvdb_id AS show_tvdb_id,
@@ -111,7 +111,7 @@ def home():
 
 @app.route('/shows/watched', methods=['POST'])
 @login_required
-def shows_watched():
+def shows_watched() -> Response:
 	error = None
 	params = params_to_dict(request.form)
 	episodeid = params.get('episodeid')
@@ -124,13 +124,13 @@ def shows_watched():
 
 @app.route('/shows', methods=['GET'])
 @login_required
-def shows():
+def shows() -> Response:
 	return render_template('shows.html')
 
 
 @app.route('/shows/list', methods=['GET'])
 @login_required
-def shows_list():
+def shows_list() -> Response:
 	qry = "SELECT id, tvdb_id, name FROM tvshow WHERE follows_tvshow(%s, id) ORDER BY name ASC"
 	shows = fetch_query(qry, (session['userid'],))
 	for s in shows:
@@ -142,7 +142,7 @@ def shows_list():
 
 @app.route('/shows/search', methods=['GET'])
 @login_required
-def shows_search():
+def shows_search() -> Response:
 	error = None
 	result = []
 	params = params_to_dict(request.args)
@@ -162,7 +162,7 @@ def shows_search():
 
 @app.route('/shows/follow', methods=['POST'])
 @login_required
-def shows_follow():
+def shows_follow() -> Response:
 	error = None
 	params = params_to_dict(request.form)
 	tvdb_id = params.get('tvdb_id')
@@ -181,7 +181,7 @@ def shows_follow():
 
 @app.route('/shows/unfollow', methods=['POST'])
 @login_required
-def shows_unfollow():
+def shows_unfollow() -> Response:
 	error = None
 	params = params_to_dict(request.form)
 	tvshowid = params.get('tvshowid')
@@ -194,13 +194,13 @@ def shows_unfollow():
 
 @app.route('/movies', methods=['GET'])
 @login_required
-def movies():
+def movies() -> Response:
 	return render_template('movies.html')
 
 
 @app.route('/movies/list', methods=['GET'])
 @login_required
-def movies_list():
+def movies_list() -> Response:
 	qry = """SELECT m.*,
 				COALESCE(to_char(m.releasedate, 'DD/MM/YYYY'), 'TBD') AS releasedate_str,
 				m.releasedate < current_date AS in_past
@@ -230,7 +230,7 @@ def movies_list():
 
 @app.route('/movies/watched', methods=['POST'])
 @login_required
-def movies_watched():
+def movies_watched() -> Response:
 	error = None
 	params = params_to_dict(request.form)
 	movieid = params.get('movieid')
@@ -243,7 +243,7 @@ def movies_watched():
 
 @app.route('/movies/search', methods=['GET'])
 @login_required
-def movies_search():
+def movies_search() -> Response:
 	error = None
 	result = []
 	params = params_to_dict(request.args)
@@ -264,7 +264,7 @@ def movies_search():
 
 @app.route('/movies/follow', methods=['POST'])
 @login_required
-def movies_follow():
+def movies_follow() -> Response:
 	error = None
 	params = params_to_dict(request.form)
 	moviedb_id = params.get('moviedb_id')
@@ -285,7 +285,7 @@ def movies_follow():
 @app.route('/shows/update', methods=['GET'])
 @app.route('/shows/update/<int:tvshowid>', methods=['GET'])
 @check_celery_running
-def shows_update(tvshowid=None):
+def shows_update(tvshowid: int = None) -> Response:
 	error = None
 
 	if tvshowid is not None:
@@ -315,7 +315,7 @@ def shows_update(tvshowid=None):
 
 
 @celery.task(queue='scheduler')
-def resync_tvshow(airdate, tvshow, tvdb_token):
+def resync_tvshow(airdate: str, tvshow: dict, tvdb_token: str) -> None:
 	print('Checking date %s for %s' % (airdate, tvshow['name']))
 	resp = tvdb.episode_search(tvshow['tvdb_id'], airdate, token=tvdb_token)
 	if resp:
@@ -365,7 +365,7 @@ def resync_tvshow(airdate, tvshow, tvdb_token):
 @app.route('/movies/update', methods=['GET'])
 @app.route('/movies/update/<int:movieid>', methods=['GET'])
 @check_celery_running
-def movies_update(movieid=None):
+def movies_update(movieid: int = None) -> Response:
 	error = None
 
 	qry = "SELECT *, releasedate::TEXT AS releasedate FROM movie"
@@ -395,7 +395,7 @@ def movies_update(movieid=None):
 
 
 @celery.task(queue='scheduler')
-def resync_movie(movie):
+def resync_movie(movie: dict) -> None:
 	print('Resyncing %s' % movie['name'])
 	resp = moviedb.get(movie['moviedb_id'])
 	changed = False
@@ -407,10 +407,11 @@ def resync_movie(movie):
 			changed = True
 
 	if changed:
-		print('"%s" (%s) changed to "%s" (%s)' % (movie['name'], movie['releasedate'], resp['title'], resp['release_date']))
-		qry = "UPDATE movie SET name = %s, releasedate = %s WHERE id = %s"
-		qargs = (resp['title'], resp['release_date'], movie['id'],)
-		mutate_query(qry, qargs)
+		print('"{}" ({}) changed to "{}" ({})'.format(movie['name'], movie['releasedate'], resp['title'], resp['release_date']))
+		mutate_query(
+			"UPDATE movie SET name = %s, releasedate = %s WHERE id = %s",
+			(resp['title'], resp['release_date'], movie['id'],)
+		)
 
 
 if __name__ == '__main__':
