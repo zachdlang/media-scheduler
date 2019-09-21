@@ -94,7 +94,7 @@ def episode_search(
 
 def image_search(tvshow_tvdb_id: int) -> list:
 	params = {'keyType': 'poster'}
-	resp = _send_request('/series/{}/images/query'.format(tvshow_tvdb_id, params))
+	resp = _send_request('/series/{}/images/query'.format(tvshow_tvdb_id), params)
 	return resp['data']
 
 
