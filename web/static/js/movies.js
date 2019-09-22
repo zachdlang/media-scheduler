@@ -59,7 +59,7 @@ function markWatched(elem) {
 			elem.remove();
 			removeEmptyDates();
 		}
-	)
+	);
 }
 
 $('#followModal').on('shown.bs.modal', function() {
