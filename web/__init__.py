@@ -90,22 +90,30 @@ def logout() -> Response:
 @app.route('/', methods=['GET'])
 @login_required
 def home() -> Response:
-	qry = """SELECT e.*,
-				s.name AS show_name,
-				s.tvdb_id AS show_tvdb_id,
-				to_char(e.airdate, 'Day DD/MM/YYYY') AS airdate_str,
-				e.airdate < current_date AS in_past
-			FROM episode e
-			LEFT JOIN tvshow s ON (s.id = e.tvshowid)
-			WHERE follows_episode(%s, e.id)
-			ORDER BY e.airdate, show_name, e.seasonnumber, e.episodenumber"""
-	episodes = fetch_query(qry, (session['userid'],))
+	episodes = fetch_query(
+		"""
+		SELECT
+			e.id, e.seasonnumber,
+			e.episodenumber, e.name,
+			s.name AS show_name,
+			s.tvdb_id AS show_tvdb_id,
+			to_char(e.airdate, 'Day DD/MM/YYYY') AS airdate_str,
+			e.airdate < current_date AS in_past
+		FROM episode e
+		LEFT JOIN tvshow s ON (s.id = e.tvshowid)
+		WHERE follows_episode(%s, e.id)
+		ORDER BY e.airdate, show_name, e.seasonnumber, e.episodenumber
+		""",
+		(session['userid'],)
+	)
 	outstanding = any(e['in_past'] is True for e in episodes)
 	dates = []
 	for e in episodes:
 		if e['in_past'] is False and e['airdate_str'] not in dates:
 			dates.append(e['airdate_str'])
 		e['poster'] = tvdb.get_poster(e['show_tvdb_id'])
+		if not e['poster']:
+			e['poster'] = url_for('static', filename='img/placeholder.jpg')
 	return render_template(
 		'schedule.html',
 		outstanding=outstanding,
@@ -194,8 +202,11 @@ def shows_follow() -> Response:
 			single_row=True
 		)
 		if not tvshow:
-			qry = "INSERT INTO tvshow (name, tvdb_id) VALUES (%s, %s) RETURNING id"
-			tvshow = mutate_query(qry, (name, tvdb_id,), returning=True)
+			tvshow = mutate_query(
+				"INSERT INTO tvshow (name, tvdb_id) VALUES (%s, %s) RETURNING id",
+				(name, tvdb_id,),
+				returning=True
+			)
 		mutate_query(
 			"SELECT add_watcher_tvshow(%s, %s)",
 			(session['userid'], tvshow['id'],)
