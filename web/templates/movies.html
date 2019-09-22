@@ -1,10 +1,76 @@
 {% extends 'base.html' %}
 
+{% block handlebars %}
+{% raw -%}
+<script id="search-result-template" type="text/x-handlebars-template">
+	{{#each result}}
+	<div
+		class="search-result col-xs-12 col-sm-6 col-md-6 col-lg-6"
+		data-moviedb_id="{{id}}"
+		data-name="{{name}}"
+		data-releasedate="{{releasedate}}"
+	>
+		<div class="inner-search well well-sm col-xs-12">
+			{{#if poster}}
+			<img class="img-responsive" src="https://image.tmdb.org/t/p/w500{{poster}}">
+			{{/if}}
+			<h5>
+				{{name}}
+				{{#if year}}({{year}}){{/if}}
+			</h5>
+		</div>
+	</div>
+	{{/each}}
+</script>
+
+<script id="movielist-partial" type="text/x-handlebars-template">
+	{{#each movies}}
+	<div class="movie col-xs-12 col-sm-6 col-md-4" data-movieid="{{id}}">
+		<div class="inner-movie well col-xs-12">
+			<img class="poster img-responsive col-xs-4" src="{{poster}}" alt="Poster for {{name}}">
+			<div class="movie-content col-xs-8">
+				<h5>{{name}} <small>{{releasedate_str}}</small></h5>
+				<a class="btn btn-success btn-block watched_movie">
+					<span class="glyphicon glyphicon-ok"></span> Watched
+				</a>
+				<a class="btn btn-primary btn-block" href="{{update_url}}">
+					<span class="glyphicon glyphicon-refresh"></span> Refresh
+				</a>
+			</div>
+		</div>
+	</div>
+	{{/each}}
+</script>
+
+<script id="movie-template" type="text/x-handlebars-template">
+	{{#if outstanding}}
+	<div class="date col-xs-12">
+		<h4>Outstanding</h4>
+		{{>movielist movies=outstanding}}
+	</div>
+	{{/if}}
+	{{#each dates}}
+	<div class="date col-xs-12">
+		<h4>{{date}}</h4>
+		{{>movielist movies=movies}}
+	</div>
+	{{/each}}
+</script>
+{%- endraw %}
+{% endblock %}
+
 {% block content %}
-<div class="heading col-xs-12 col-sm-12 col-md-12 col-lg-12">
+<div class="heading col-xs-12">
 	<h4>
 		Movies <span id="followed"></span>
-		<button type="button" class="btn btn-primary pull-right" data-toggle="modal" data-target="#followModal"><span class="glyphicon glyphicon-plus"></span> Add New Movie</button>
+		<button
+			type="button"
+			class="btn btn-primary pull-right"
+			data-toggle="modal"
+			data-target="#followModal"
+		>
+			<span class="glyphicon glyphicon-plus"></span> Add New Movie
+		</button>
 	</h4>
 </div>
 
@@ -12,23 +78,23 @@
 
 <div id="followModal" class="modal fade" role="dialog">
 	<div class="modal-dialog">
-		<div class="modal-content col-xs-12 col-sm-12 col-md-12 col-lg-12">
-			<div class="modal-header col-xs-12 col-sm-12 col-md-12 col-lg-12">
+		<div class="modal-content col-xs-12">
+			<div class="modal-header col-xs-12">
 				<button type="button" class="close" data-dismiss="modal">&times;</button>
 				<h4 class="modal-title">Add New Movie</h4>
 			</div>
-			<div class="modal-body col-xs-12 col-sm-12 col-md-12 col-lg-12">
+			<div class="modal-body col-xs-12">
 				<div id="modal_flash_div"></div>
 				<div class="form-group">
-					<div class="input-group col-xs-12 col-sm-12 col-md-12 col-lg-12">
+					<div class="input-group col-xs-12">
 						<input type="text" class="form-control" id="follow_search">
 						<a class="btn btn-primary input-group-addon" id="follow_search_submit">Search</a>
 					</div>
 				</div>
 
-				<div id="follow_search_result" class="hidden"></div>
+				<div id="follow_search_result"></div>
 			</div>
-			<div class="modal-footer col-xs-12 col-sm-12 col-md-12 col-lg-12">
+			<div class="modal-footer col-xs-12">
 				<button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
 			</div>
 		</div>
@@ -38,136 +104,5 @@
 {% endblock %}
 
 {% block script %}
-<script>
-	$(document).ready(function() {
-		get_movies();
-	});
-
-	$('#followModal').on('shown.bs.modal', function() {
-		$('#follow_search').focus();
-	});
-
-	$('#followModal').on('hidden.bs.modal', function() {
-		$('#follow_search').val('');
-		$('#follow_search_result').addClass('hidden').empty();
-	});
-
-	$('#follow_search_submit').on('click', function() {
-		follow_search();
-	});
-
-	$('#follow_search').on('keyup', function(e) {
-		if (e.keyCode == 13) follow_search();
-	});
-
-	function follow_search() {
-		if ($('#follow_search').val()) {
-			$.ajax({
-				url: "{{ url_for('movies_search') }}",
-				method: "GET",
-				data: { 'search':$('#follow_search').val() }
-			}).done(function(data) {
-				if (data.error) {
-					showError(data.error);
-				} else {
-					var m_html = '';
-					for (var i=0; i < data.result.length; i++) {
-						var m = data.result[i];
-						m_html += '<div class="search-result col-xs-12 col-sm-6 col-md-6 col-lg-6" data-moviedb_id="'+m.id+'" data-name="'+m.name+'" data-releasedate="'+m.releasedate+'">\
-										<div class="inner-search well well-sm col-xs-12 col-sm-12 col-md-12 col-lg-12">';
-						if (m.poster) m_html += '<img class="img-responsive" src="https://image.tmdb.org/t/p/w500'+m.poster+'">';
-						m_html += '<h5>'+m.name;
-						if (m.year) m_html += ' ('+m.year+')';
-						m_html += '</h5>\
-								</div>\
-							</div>';
-					}
-					$('#follow_search_result').removeClass('hidden').html(m_html);
-				}
-			}).fail(ajaxFailed);
-		}
-	}
-
-	$('#follow_search_result').on('click', '.search-result .inner-search', function() {
-		var row = $(this).closest('.search-result');
-		$.ajax({
-			url: "{{ url_for('movies_follow') }}",
-			method: "POST",
-			data: { 'moviedb_id':row.data()['moviedb_id'], 'name':row.data()['name'], 'releasedate':row.data()['releasedate'] }
-		}).done(function(data) {
-			if (data.error) {
-				showError(data.error);
-			} else {
-				get_movies();
-				showSuccess('Successfully added.');
-				$('#follow_search').val('').focus();
-			}
-		}).fail(ajaxFailed);
-	});
-
-	function get_movies() {
-		$.ajax({
-			url: "{{ url_for('movies_list') }}",
-			method: "GET"
-		}).done(function(data) {
-			var count = 0;
-			var c_html = '';
-			if (data.outstanding) {
-				c_html += '<div class="date col-xs-12 col-sm-12 col-md-12 col-lg-12">\
-								<h4>Outstanding</h4>'
-				for (var i = 0; i < data.outstanding.length; i++) {
-					var m = data.outstanding[i];
-					c_html += gen_movie(m);
-					count++;
-				}
-				c_html += '</div>';
-			}
-			for (var i = 0; i < data.dates.length; i++) {
-				var d = data.dates[i];
-				c_html += '<div class="date col-xs-12 col-sm-12 col-md-12 col-lg-12">\
-								<h4>'+escapeHTML(d.date)+'</h4>';
-				for (var j = 0; j < d.movies.length; j++) {
-					var m = d.movies[j];
-					c_html += gen_movie(m);
-					count++;
-				}
-				c_html += '</div>';
-			}
-			$('#content').html(c_html);
-			$('#followed').html('('+count+')');
-		}).fail(ajaxFailed);
-	}
-
-	function gen_movie(m) {
-		var poster = (m.poster) ? escapeHTML(m.poster) : "{{ url_for('static', filename='img/placeholder.jpg') }}";
-		return '<div class="movie col-xs-12 col-sm-6 col-md-4 col-lg-4" data-movieid="'+m.id+'">\
-					<div class="inner-movie well col-xs-12 col-sm-12 col-md-12 col-lg-12">\
-						<img class="poster img-responsive col-xs-4 col-sm-4 col-md-4 col-lg-4" src="'+poster+'" alt="Poster for '+escapeHTML(m.name)+'">\
-						<div class="movie-content col-xs-8 col-sm-8 col-md-8 col-lg-8">\
-							<h5>'+escapeHTML(m.name)+' <small>'+escapeHTML(m.releasedate_str)+'</small></h5>\
-							<a class="btn btn-success btn-block watched_movie"><span class="glyphicon glyphicon-ok"></span> Watched</a>\
-							<a class="btn btn-primary btn-block" href="'+m.update_url+'"><span class="glyphicon glyphicon-refresh"></span> Refresh</a>\
-						</div>\
-					</div>\
-				</div>';
-	}
-
-	$('#content').on('click', '.watched_movie', function() {
-		var row = $(this).closest('.movie');
-		$.ajax({
-			url: "{{ url_for('movies_watched') }}",
-			method: "POST",
-			data: { 'movieid':row.data()['movieid'] }
-		}).done(function(data) {
-			if (data.error) {
-				showError(data.error);
-			} else {
-				row.remove();
-				$('.date').each(function() {
-					if ($(this).find('.movie').length <= 0) $(this).remove();
-				});
-			}
-		}).fail(ajaxFailed);
-	});
-</script>
+<script src="{{ url_for('static', filename='js/movies.js') }}"></script>
 {% endblock %}

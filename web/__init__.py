@@ -243,6 +243,7 @@ def movies_list() -> Response:
 	)
 	outstanding = []
 	dates = []
+	count = 0
 	for m in movies:
 		existing_date = m['releasedate_str'] in [x['date'] for x in dates]
 		if m['in_past'] is False and not existing_date:
@@ -250,7 +251,10 @@ def movies_list() -> Response:
 		elif m['in_past'] is True:
 			outstanding.append(m)
 		m['poster'] = moviedb.get_poster(m['moviedb_id'])
+		if not m['poster']:
+			m['poster'] = url_for('static', filename='img/placeholder.jpg')
 		m['update_url'] = url_for('movies_update', movieid=m['id'])
+		count += 1
 	dates.append({'date': 'TBD'})
 
 	for d in dates:
@@ -259,7 +263,7 @@ def movies_list() -> Response:
 			if m['releasedate_str'] == d['date']:
 				d['movies'].append(m)
 
-	return jsonify(dates=dates, outstanding=outstanding)
+	return jsonify(dates=dates, outstanding=outstanding, count=count)
 
 
 @app.route('/movies/watched', methods=['POST'])

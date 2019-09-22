@@ -1,7 +1,7 @@
 {% extends 'base.html' %}
 
 {% block content %}
-<div class="heading col-xs-12 col-sm-12 col-md-12 col-lg-12">
+<div class="heading col-xs-12">
 	<h4>
 		TV Shows <span id="followed"></span>
 		<button type="button" class="btn btn-primary pull-right" data-toggle="modal" data-target="#followModal"><span class="glyphicon glyphicon-plus"></span> Add New Show</button>
@@ -12,15 +12,15 @@
 
 <div id="followModal" class="modal fade" role="dialog">
 	<div class="modal-dialog">
-		<div class="modal-content col-xs-12 col-sm-12 col-md-12 col-lg-12">
-			<div class="modal-header col-xs-12 col-sm-12 col-md-12 col-lg-12">
+		<div class="modal-content col-xs-12">
+			<div class="modal-header col-xs-12">
 				<button type="button" class="close" data-dismiss="modal">&times;</button>
 				<h4 class="modal-title">Add New Show</h4>
 			</div>
-			<div class="modal-body col-xs-12 col-sm-12 col-md-12 col-lg-12">
+			<div class="modal-body col-xs-12">
 				<div id="modal_flash_div"></div>
 				<div class="form-group">
-					<div class="input-group col-xs-12 col-sm-12 col-md-12 col-lg-12">
+					<div class="input-group col-xs-12">
 						<input type="text" class="form-control" id="follow_search">
 						<a class="btn btn-primary input-group-addon" id="follow_search_submit">Search</a>
 					</div>
@@ -28,7 +28,7 @@
 
 				<div id="follow_search_result" class="hidden"></div>
 			</div>
-			<div class="modal-footer col-xs-12 col-sm-12 col-md-12 col-lg-12">
+			<div class="modal-footer col-xs-12">
 				<button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
 			</div>
 		</div>
@@ -74,7 +74,7 @@
 					for (var i=0; i < data.result.length; i++) {
 						var s = data.result[i];
 						s_html += '<div class="search-result col-xs-12 col-sm-6 col-md-6 col-lg-6" data-tvdb_id="'+s.id+'" data-name="'+s.name+'">\
-										<div class="inner-search well well-sm col-xs-12 col-sm-12 col-md-12 col-lg-12">';
+										<div class="inner-search well well-sm col-xs-12">';
 						if (s.banner) s_html += '<img class="img-responsive" src="http://thetvdb.com/banners/'+s.banner+'">';
 						s_html += '<h5>'+s.name;
 						if (s.year) s_html += ' ('+s.year+')';
@@ -114,10 +114,10 @@
 			for (var i = 0; i < data.shows.length; i++) {
 				var s = data.shows[i];
 				var poster = (s.poster) ? escapeHTML(s.poster) : "{{ url_for('static', filename='img/placeholder.jpg') }}";
-				c_html += '<div class="show col-xs-12 col-sm-6 col-md-4 col-lg-4" data-tvshowid="'+s.id+'">\
-								<div class="inner-show well col-xs-12 col-sm-12 col-md-12 col-lg-12">\
-									<img class="poster img-responsive col-xs-5 col-sm-5 col-md-5 col-lg-5" src="'+poster+'" alt="Poster for '+escapeHTML(s.name)+'">\
-									<div class="show-content col-xs-7 col-sm-7 col-md-7 col-lg-7">\
+				c_html += '<div class="show col-xs-12 col-sm-6 col-md-4" data-tvshowid="'+s.id+'">\
+								<div class="inner-show well col-xs-12">\
+									<img class="poster img-responsive col-xs-5" src="'+poster+'" alt="Poster for '+escapeHTML(s.name)+'">\
+									<div class="show-content col-xs-7">\
 										<h5>'+escapeHTML(s.name)+'</h5>\
 										<a class="btn btn-danger btn-block remove_show"><span class="glyphicon glyphicon-trash"></span> Remove</a>\
 										<a class="btn btn-success btn-block confirm_remove" style="display: none;"><span class="glyphicon glyphicon-ok"></span> Confirm</a>\
