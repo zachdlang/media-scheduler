@@ -1,10 +1,59 @@
 {% extends 'base.html' %}
 
+{% block handlebars %}
+{% raw -%}
+<script id="search-result-template" type="text/x-handlebars-template">
+	{{#each result}}
+	<div class="search-result col-xs-12 col-sm-6" data-tvdb_id="{{id}}" data-name="{{name}}">
+		<div class="inner-search well well-sm col-xs-12">
+			{{#if banner}}
+			<img class="img-responsive" src="http://thetvdb.com/banners/{{banner}}">
+			{{/if}}
+			<h5>
+				{{name}}
+				{{#if year}}({{year}}){{/if}}
+			</h5>
+		</div>
+	</div>
+	{{/each}}
+</script>
+
+<script id="show-template" type="text/x-handlebars-template">
+	{{#each shows}}
+	<div class="show col-xs-12 col-sm-6 col-md-4" data-tvshowid="{{id}}">
+		<div class="inner-show well col-xs-12">
+			<img class="poster img-responsive col-xs-5" src="{{poster}}" alt="Poster for {{name}}">
+			<div class="show-content col-xs-7">
+				<h5>{{name}}</h5>
+				<a class="btn btn-danger btn-block remove_show">
+					<span class="glyphicon glyphicon-trash"></span> Remove
+				</a>
+				<a class="btn btn-success btn-block confirm_remove" style="display: none;">
+					<span class="glyphicon glyphicon-ok"></span> Confirm
+				</a>
+				<a class="btn btn-primary btn-block" href="{{update_url}}">
+					<span class="glyphicon glyphicon-refresh"></span> Refresh
+				</a>
+			</div>
+		</div>
+	</div>
+	{{/each}}
+</script>
+{%- endraw %}
+{% endblock %}
+
 {% block content %}
 <div class="heading col-xs-12">
 	<h4>
 		TV Shows <span id="followed"></span>
-		<button type="button" class="btn btn-primary pull-right" data-toggle="modal" data-target="#followModal"><span class="glyphicon glyphicon-plus"></span> Add New Show</button>
+		<button
+			type="button"
+			class="btn btn-primary pull-right"
+			data-toggle="modal"
+			data-target="#followModal"
+		>
+			<span class="glyphicon glyphicon-plus"></span> Add New Show
+		</button>
 	</h4>
 </div>
 
@@ -38,119 +87,5 @@
 {% endblock %}
 
 {% block script %}
-<script>
-	$(document).ready(function() {
-		get_shows();
-	});
-
-	$('#followModal').on('shown.bs.modal', function() {
-		$('#follow_search').focus();
-	});
-
-	$('#followModal').on('hidden.bs.modal', function() {
-		$('#follow_search').val('');
-		$('#follow_search_result').addClass('hidden').empty();
-	});
-
-	$('#follow_search_submit').on('click', function() {
-		follow_search();
-	});
-
-	$('#follow_search').on('keyup', function(e) {
-		if (e.keyCode == 13) follow_search();
-	});
-
-	function follow_search() {
-		if ($('#follow_search').val()) {
-			$.ajax({
-				url: "{{ url_for('shows_search') }}",
-				method: "GET",
-				data: { 'search':$('#follow_search').val() }
-			}).done(function(data) {
-				if (data.error) {
-					showError(data.error);
-				} else {
-					var s_html = '';
-					for (var i=0; i < data.result.length; i++) {
-						var s = data.result[i];
-						s_html += '<div class="search-result col-xs-12 col-sm-6 col-md-6 col-lg-6" data-tvdb_id="'+s.id+'" data-name="'+s.name+'">\
-										<div class="inner-search well well-sm col-xs-12">';
-						if (s.banner) s_html += '<img class="img-responsive" src="http://thetvdb.com/banners/'+s.banner+'">';
-						s_html += '<h5>'+s.name;
-						if (s.year) s_html += ' ('+s.year+')';
-						s_html += '</h5>\
-								</div>\
-							</div>';
-					}
-					$('#follow_search_result').removeClass('hidden').html(s_html);
-				}
-			}).fail(ajaxFailed);
-		}
-	}
-
-	$('#follow_search_result').on('click', '.search-result .inner-search', function() {
-		var row = $(this).closest('.search-result');
-		$.ajax({
-			url: "{{ url_for('shows_follow') }}",
-			method: "POST",
-			data: { 'tvdb_id':row.data()['tvdb_id'], 'name':row.data()['name'] }
-		}).done(function(data) {
-			if (data.error) {
-				showError(data.error);
-			} else {
-				get_shows();
-				showSuccess('Successfully added.');
-				$('#follow_search').val('').focus();
-			}
-		}).fail(ajaxFailed);
-	});
-
-	function get_shows() {
-		$.ajax({
-			url: "{{ url_for('shows_list') }}",
-			method: "GET"
-		}).done(function(data) {
-			var c_html = '';
-			for (var i = 0; i < data.shows.length; i++) {
-				var s = data.shows[i];
-				var poster = (s.poster) ? escapeHTML(s.poster) : "{{ url_for('static', filename='img/placeholder.jpg') }}";
-				c_html += '<div class="show col-xs-12 col-sm-6 col-md-4" data-tvshowid="'+s.id+'">\
-								<div class="inner-show well col-xs-12">\
-									<img class="poster img-responsive col-xs-5" src="'+poster+'" alt="Poster for '+escapeHTML(s.name)+'">\
-									<div class="show-content col-xs-7">\
-										<h5>'+escapeHTML(s.name)+'</h5>\
-										<a class="btn btn-danger btn-block remove_show"><span class="glyphicon glyphicon-trash"></span> Remove</a>\
-										<a class="btn btn-success btn-block confirm_remove" style="display: none;"><span class="glyphicon glyphicon-ok"></span> Confirm</a>\
-										<a class="btn btn-primary btn-block" href="'+s.update_url+'"><span class="glyphicon glyphicon-refresh"></span> Refresh</a>\
-									</div>\
-								</div>\
-							</div>';
-			}
-			$('#content').html(c_html);
-			$('#followed').html('('+data.shows.length+')');
-		}).fail(ajaxFailed);
-	}
-
-	$('#content').on('click', '.confirm_remove', function() {
-		var row = $(this).closest('.show');
-		$.ajax({
-			url: "{{ url_for('shows_unfollow') }}",
-			method: "POST",
-			data: { 'tvshowid':row.data()['tvshowid'] }
-		}).done(function(data) {
-			if (data.error) {
-				showError(data.error);
-			} else {
-				showSuccess('Successfully removed.');
-				row.remove();
-			}
-		}).fail(ajaxFailed);
-	});
-
-	$('#content').on('click', '.remove_show', function() {
-		var row = $(this).closest('.show');
-		$(this).slideToggle(500);
-		row.find('.confirm_remove').slideToggle(500);
-	});
-</script>
+<script src="{{ url_for('static', filename='js/shows.js') }}"></script>
 {% endblock %}

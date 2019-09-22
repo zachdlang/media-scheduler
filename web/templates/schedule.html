@@ -1,10 +1,10 @@
 {% extends 'base.html' %}
 
 {% macro gen_episode(e) -%}
-	<div class="show col-xs-12 col-sm-6 col-md-6 col-lg-6" data-episodeid="{{ e.id }}">
+	<div class="show col-xs-12 col-sm-6" data-episodeid="{{ e.id }}">
 		<div class="inner-show well col-xs-12">
-			<img class="poster img-responsive col-xs-3 col-sm-3 col-md-3 col-lg-3" src="{% if e.poster %}{{ e.poster }}{% else %}{{ url_for('static', filename='img/placeholder.jpg') }}{% endif %}" alt="Poster for {{ e.show_name }}">
-			<div class="show-content col-xs-9 col-sm-9 col-md-9 col-lg-9">
+			<img class="poster img-responsive col-xs-3" src="{% if e.poster %}{{ e.poster }}{% else %}{{ url_for('static', filename='img/placeholder.jpg') }}{% endif %}" alt="Poster for {{ e.show_name }}">
+			<div class="show-content col-xs-9">
 				<h5>{{ e.show_name }} <small>{{ e.airdate_str }}</small></h5>
 				<h6>S{{ '%02d' | format(e.seasonnumber) }}E{{ '%02d' | format(e.episodenumber) }}</h6>
 				<h6>{{ e.name }}</h6>

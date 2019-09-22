@@ -151,6 +151,8 @@ def shows_list() -> Response:
 	)
 	for s in shows:
 		s['poster'] = tvdb.get_poster(s['tvdb_id'])
+		if not s['poster']:
+			s['poster'] = url_for('static', filename='img/placeholder.jpg')
 		s['update_url'] = url_for('shows_update', tvshowid=s['id'])
 		del s['tvdb_id']
 	return jsonify(shows=shows)

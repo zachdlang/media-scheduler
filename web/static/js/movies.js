@@ -5,11 +5,10 @@ function followSearch() {
 			{ search: $('#follow_search').val() },
 			function(data) {
 				compileHandlebars('search-result-template', '#follow_search_result', data);
-				$('#follow_search_result')
-					.removeClass('hidden')
-					.on('click', '.search-result', function() {
-						followMovie($(this));
-					});
+				$('#follow_search_result').removeClass('hidden');
+				$('.search-result').on('click', function() {
+					followMovie($(this));
+				});
 			}
 		);
 	}
