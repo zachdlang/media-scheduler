@@ -22,6 +22,9 @@ function getMovies() {
 			Handlebars.registerPartial('movielist', $('#movielist-partial').html());
 			compileHandlebars('movie-template', '#content', data);
 			$('#followed').text('(' + data.count + ')');
+			$('.watched_movie').on('click', function() {
+				markWatched($(this).closest('.movie'));
+			});
 		}
 	);
 }
@@ -61,23 +64,19 @@ function markWatched(elem) {
 	);
 }
 
-$('#followModal').on('shown.bs.modal', function() {
-	$('#follow_search').focus();
-});
-
-$('#followModal').on('hidden.bs.modal', function() {
-	$('#follow_search').val('');
-	$('#follow_search_result').addClass('hidden').empty();
-});
+$('#followModal')
+	.on('shown.bs.modal', function() {
+		$('#follow_search').focus();
+	})
+	.on('hidden.bs.modal', function() {
+		$('#follow_search').val('');
+		$('#follow_search_result').addClass('hidden').empty();
+	});
 
 $('#follow_search_submit').on('click', followSearch);
 
 $('#follow_search').on('keyup', function(e) {
 	if (e.keyCode == 13) followSearch();
-});
-
-$('#content').on('click', '.watched_movie', function() {
-	markWatched($(this).closest('.movie'));
 });
 
 $(document).ready(getMovies);

@@ -24,6 +24,15 @@ function getShows() {
 		function(data) {
 			compileHandlebars('show-template', '#content', data);
 			$('#followed').text('('+data.shows.length+')');
+			$('.remove_show').on('click', function() {
+				var row = $(this).closest('.show');
+				$(this).slideToggle(500);
+				row.find('.confirm_remove').slideToggle(500);
+			});
+			$('.confirm_remove').on('click', function() {
+				var tvshowid = $(this).closest('.show').data().tvshowid;
+				unfollowShow(tvshowid);
+			});
 		}
 	);
 }
@@ -51,25 +60,14 @@ function followShow(tvdb_id, name) {
 	);
 }
 
-$('#content').on('click', '.confirm_remove', function() {
-	var tvshowid = $(this).closest('.show').data().tvshowid;
-	unfollowShow(tvshowid);
-});
-
-$('#content').on('click', '.remove_show', function() {
-	var row = $(this).closest('.show');
-	$(this).slideToggle(500);
-	row.find('.confirm_remove').slideToggle(500);
-});
-
-$('#followModal').on('shown.bs.modal', function() {
-	$('#follow_search').focus();
-});
-
-$('#followModal').on('hidden.bs.modal', function() {
-	$('#follow_search').val('');
-	$('#follow_search_result').addClass('hidden').empty();
-});
+$('#followModal')
+	.on('shown.bs.modal', function() {
+		$('#follow_search').focus();
+	})
+	.on('hidden.bs.modal', function() {
+		$('#follow_search').val('');
+		$('#follow_search_result').addClass('hidden').empty();
+	});
 
 $('#follow_search_submit').on('click', followSearch);
 
