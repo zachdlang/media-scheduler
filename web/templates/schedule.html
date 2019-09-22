@@ -52,29 +52,5 @@
 {% endblock %}
 
 {% block script %}
-<script>
-	$('.watched_show').on('click', function() {
-		var row = $(this).closest('.show');
-		$.ajax({
-			url: "{{ url_for('shows_watched') }}",
-			method: "POST",
-			data: { 'episodeid':row.data()['episodeid'] }
-		}).done(function(data) {
-			if (data.error) {
-				showError(data.error);
-			} else {
-				row.remove();
-				$('.date, .outstanding-episodes').each(function() {
-					if ($(this).find('.show').length <= 0) $(this).remove();
-				});
-			}
-		}).fail(ajaxFailed);
-	});
-
-	$('#outstanding').on('show.bs.collapse', function() {
-		$(this).closest('.panel').find('.direction').addClass('flip');
-	}).on('hide.bs.collapse', function() {
-		$(this).closest('.panel').find('.direction').removeClass('flip');
-	});
-</script>
+<script src="{{ url_for('static', filename='js/schedule.js') }}"></script>
 {% endblock %}
