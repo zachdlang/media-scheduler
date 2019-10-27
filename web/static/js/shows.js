@@ -43,7 +43,7 @@ function unfollowShow(tvshowid) {
 		{tvshowid: tvshowid},
 		function() {
 			showSuccess('Successfully removed.');
-			row.remove();
+			getShows();
 		}
 	);
 }
