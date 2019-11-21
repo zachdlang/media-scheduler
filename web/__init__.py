@@ -16,7 +16,7 @@ from sitetools.utility import (
 	is_logged_in, params_to_dict,
 	login_required, strip_unicode_characters, check_login,
 	fetch_query, mutate_query, disconnect_database,
-	handle_exception, setup_celery, check_celery_running
+	handle_exception, setup_celery
 )
 
 
@@ -357,7 +357,6 @@ def movies_follow() -> Response:
 
 @app.route('/shows/update', methods=['GET'])
 @app.route('/shows/update/<int:tvshowid>', methods=['GET'])
-@check_celery_running
 def shows_update(tvshowid: int = None) -> Response:
 	error = None
 
@@ -478,7 +477,6 @@ def resync_tvshow(airdate: str, tvshow: dict, tvdb_token: str) -> None:
 
 @app.route('/movies/update', methods=['GET'])
 @app.route('/movies/update/<int:movieid>', methods=['GET'])
-@check_celery_running
 def movies_update(movieid: int = None) -> Response:
 	error = None
 
