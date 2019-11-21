@@ -28,9 +28,7 @@ def get_headers() -> dict:
 
 def login() -> str:
 	data = {
-		'apikey': config.TVDB_APIKEY,
-		'userkey': config.TVDB_USERKEY,
-		'username': config.TVDB_USERNAME
+		'apikey': config.TVDB_APIKEY
 	}
 	headers = get_headers()
 	resp = requests.post(
