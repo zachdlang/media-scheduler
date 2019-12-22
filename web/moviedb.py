@@ -8,9 +8,7 @@ from flask import url_for, Response
 
 # Local imports
 from web import config
-from sitetools.utility import (
-	get_static_file, fetch_image
-)
+from flasktools import get_static_file, fetch_image
 
 
 class MovieDBException(Exception):

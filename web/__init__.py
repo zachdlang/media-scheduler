@@ -12,12 +12,10 @@ from sentry_sdk.integrations.celery import CeleryIntegration
 
 # Local imports
 from web import tvdb, moviedb, config
-from sitetools.utility import (
-	is_logged_in, params_to_dict,
-	login_required, strip_unicode_characters, check_login,
-	fetch_query, mutate_query, disconnect_database,
-	handle_exception, setup_celery
-)
+from flasktools import handle_exception, params_to_dict, strip_unicode_characters
+from flasktools.auth import is_logged_in, check_login, login_required
+from flasktools.celery import setup_celery
+from flasktools.db import disconnect_database, fetch_query, mutate_query
 
 
 if not hasattr(config, 'TESTMODE'):
