@@ -4,11 +4,11 @@ import requests
 import json
 
 # Third party imports
-from flask import url_for, Response
+from flask import Response
 
 # Local imports
 from web import config
-from flasktools import get_static_file, fetch_image
+from flasktools import get_static_file, fetch_image, serve_static_file
 
 
 class TVDBException(Exception):
@@ -109,4 +109,4 @@ def get_poster(tvdb_id: int) -> Response:
 					top_poster = r
 		url = 'http://thetvdb.com/banners/{}'.format(top_poster['fileName'])
 		fetch_image(filename, url)
-	return url_for('static', filename='images/poster_{}.jpg'.format(tvdb_id))
+	return serve_static_file('images/poster_{}.jpg'.format(tvdb_id))

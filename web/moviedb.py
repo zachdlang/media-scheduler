@@ -4,11 +4,11 @@ import json
 import os
 
 # Third party imports
-from flask import url_for, Response
+from flask import Response
 
 # Local imports
 from web import config
-from flasktools import get_static_file, fetch_image
+from flasktools import get_static_file, fetch_image, serve_static_file
 
 
 class MovieDBException(Exception):
@@ -62,7 +62,6 @@ def get_poster(moviedb_id: int) -> Response:
 			fetch_image(filename, url)
 		else:
 			return None
-	return url_for(
-		'static',
-		filename='images/movie_poster_{}.jpg'.format(moviedb_id)
+	return serve_static_file(
+		'images/movie_poster_{}.jpg'.format(moviedb_id)
 	)

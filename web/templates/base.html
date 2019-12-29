@@ -5,8 +5,8 @@
 		<meta http-equiv="X-UA-Compatible" content="IE=edge">
 		<meta name="viewport" content="width=device-width, initial-scale=1">
 		<title>Scheduler</title>
-		<link href="{{ url_for('static', filename='thirdparty/css/bootstrap.min.css') }}" rel="stylesheet">
-		<link href="{{ url_for('static', filename='css/custom.css') }}" rel="stylesheet">
+		<link href="{{ static_file('thirdparty/css/bootstrap.min.css') }}" rel="stylesheet">
+		<link href="{{ static_file('css/custom.css') }}" rel="stylesheet">
 
 		{% block handlebars %}
 		{% endblock %}
@@ -40,16 +40,16 @@
 
 			<footer class="footer">
 				<a class="pull-left" href="https://github.com/zachdlang/media-scheduler">
-					<img class="img-responsive footer-logo" src="{{ url_for('static', filename='img/github.png') }}">
+					<img class="img-responsive footer-logo" src="{{ static_file('img/github.png') }}">
 				</a>
 				<span class="footer-note">By Zach Lang</span>
 			</footer>
 		</div>
 
-		<script src="{{ url_for('static', filename='thirdparty/js/jquery.min.js') }}"></script>
-		<script src="{{ url_for('static', filename='thirdparty/js/bootstrap.min.js') }}"></script>
-		<script src="{{ url_for('static', filename='thirdparty/js/handlebars.min.js') }}"></script>
-		<script src="{{ url_for('static', filename='js/functions.js') }}"></script>
+		<script src="{{ static_file('thirdparty/js/jquery.min.js') }}"></script>
+		<script src="{{ static_file('thirdparty/js/bootstrap.min.js') }}"></script>
+		<script src="{{ static_file('thirdparty/js/handlebars.min.js') }}"></script>
+		<script src="{{ static_file('js/functions.js') }}"></script>
 
 		<script>
 			$(document).ajaxStart(showLoading);

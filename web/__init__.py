@@ -13,7 +13,10 @@ from sentry_sdk.integrations.redis import RedisIntegration
 
 # Local imports
 from web import tvdb, moviedb, config
-from flasktools import handle_exception, params_to_dict, strip_unicode_characters
+from flasktools import (
+	handle_exception, params_to_dict, strip_unicode_characters,
+	serve_static_file
+)
 from flasktools.auth import is_logged_in, check_login, login_required
 from flasktools.celery import setup_celery
 from flasktools.db import disconnect_database, fetch_query, mutate_query
@@ -36,6 +39,7 @@ app.secret_key = config.SECRETKEY
 celery = setup_celery(app)
 
 app.jinja_env.globals.update(is_logged_in=is_logged_in)
+app.jinja_env.globals.update(static_file=serve_static_file)
 
 
 @app.errorhandler(500)
@@ -111,7 +115,7 @@ def home() -> Response:
 			dates.append(e['airdate_str'])
 		e['poster'] = tvdb.get_poster(e['show_tvdb_id'])
 		if not e['poster']:
-			e['poster'] = url_for('static', filename='img/placeholder.jpg')
+			e['poster'] = serve_static_file('img/placeholder.jpg')
 	return render_template(
 		'schedule.html',
 		outstanding=outstanding,
@@ -158,7 +162,7 @@ def shows_list() -> Response:
 	for s in shows:
 		s['poster'] = tvdb.get_poster(s['tvdb_id'])
 		if not s['poster']:
-			s['poster'] = url_for('static', filename='img/placeholder.jpg')
+			s['poster'] = serve_static_file('img/placeholder.jpg')
 		s['update_url'] = url_for('shows_update', tvshowid=s['id'])
 		del s['tvdb_id']
 	return jsonify(shows=shows)
@@ -263,7 +267,7 @@ def movies_list() -> Response:
 			outstanding.append(m)
 		m['poster'] = moviedb.get_poster(m['moviedb_id'])
 		if not m['poster']:
-			m['poster'] = url_for('static', filename='img/placeholder.jpg')
+			m['poster'] = serve_static_file('img/placeholder.jpg')
 		m['update_url'] = url_for('movies_update', movieid=m['id'])
 		count += 1
 	dates.append({'date': 'TBD'})
