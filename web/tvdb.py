@@ -112,8 +112,7 @@ def _episode_image_filename(tvdb_id: int) -> Response:
 
 
 def episode_image(tvdb_id: int) -> Response:
-	if os.path.exists(_episode_image_filename(tvdb_id)):
-		return serve_static_file(f'images/episode_{tvdb_id}.jpg')
+	return serve_static_file(f'images/episode_{tvdb_id}.jpg')
 
 
 @celery.task(queue='scheduler')
