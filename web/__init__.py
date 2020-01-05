@@ -6,13 +6,14 @@ from flask import (
 	send_from_directory, request, session, url_for, redirect,
 	flash, render_template, jsonify, Flask, Response
 )
+from flask_cors import CORS
 import sentry_sdk
 from sentry_sdk.integrations.flask import FlaskIntegration
 from sentry_sdk.integrations.celery import CeleryIntegration
 from sentry_sdk.integrations.redis import RedisIntegration
 
 # Local imports
-from web import tvdb, moviedb, config
+from web import moviedb, config
 from flasktools import (
 	handle_exception, params_to_dict, strip_unicode_characters,
 	serve_static_file
@@ -36,7 +37,15 @@ app = Flask(__name__)
 
 app.secret_key = config.SECRETKEY
 
+# enable CORS
+CORS(app, resources={r'/*': {'origins': '*'}})
+
 celery = setup_celery(app)
+
+from web import tvdb
+from web.episode import bp as episode_bp
+
+app.register_blueprint(episode_bp, url_prefix='/episode')
 
 app.jinja_env.globals.update(is_logged_in=is_logged_in)
 app.jinja_env.globals.update(static_file=serve_static_file)

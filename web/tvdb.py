@@ -7,7 +7,7 @@ import json
 from flask import Response
 
 # Local imports
-from web import config
+from web import celery, config
 from flasktools import get_static_file, fetch_image, serve_static_file
 
 
@@ -42,7 +42,7 @@ def login() -> str:
 	return resp['token']
 
 
-def _send_request(endpoint: str, params: dict, token: str = None) -> any:
+def _send_request(endpoint: str, params: dict = None, token: str = None) -> any:
 	if token is None:
 		token = login()
 	headers = get_headers()
@@ -88,17 +88,12 @@ def episode_search(
 	return resp['data']
 
 
-def image_search(tvshow_tvdb_id: int) -> list:
-	params = {'keyType': 'poster'}
-	resp = _send_request('/series/{}/images/query'.format(tvshow_tvdb_id), params)
-	return resp['data']
-
-
 def get_poster(tvdb_id: int) -> Response:
 	filename = get_static_file('/images/poster_{}.jpg'.format(tvdb_id))
 	if not os.path.exists(filename):
 		try:
-			resp = image_search(tvdb_id)
+			params = {'keyType': 'poster'}
+			resp = _send_request('/series/{}/images/query'.format(tvdb_id), params)['data']
 		except TVDBException as e:
 			print(e)
 			return None
@@ -110,3 +105,27 @@ def get_poster(tvdb_id: int) -> Response:
 		url = 'http://thetvdb.com/banners/{}'.format(top_poster['fileName'])
 		fetch_image(filename, url)
 	return serve_static_file('images/poster_{}.jpg'.format(tvdb_id))
+
+
+def _episode_image_filename(tvdb_id: int) -> Response:
+	return get_static_file(f'/images/episode_{tvdb_id}.jpg')
+
+
+def episode_image(tvdb_id: int) -> Response:
+	if os.path.exists(_episode_image_filename(tvdb_id)):
+		return serve_static_file(f'images/episode_{tvdb_id}.jpg')
+
+
+@celery.task(queue='scheduler')
+def fetch_episode_image(tvdb_id: int):
+	filename = _episode_image_filename(tvdb_id)
+	if not os.path.exists(filename):
+		print(f'Fetching episode {tvdb_id} image')
+		try:
+			resp = _send_request(f'/episodes/{tvdb_id}')['data']
+		except TVDBException as e:
+			print(e)
+			return None
+		if resp['filename']:
+			url = 'http://thetvdb.com/banners/{}'.format(resp['filename'])
+			fetch_image(filename, url)
