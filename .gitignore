@@ -1,5 +1,5 @@
-web/__pycache__/*
-web/config.py
-
-tests/__pycache__/*
+__pycache__
 .venv
+
+web/config.py
+web/static/images/*.jpg
