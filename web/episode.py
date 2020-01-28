@@ -23,6 +23,8 @@ def test_token_required(f):
 # @auth_token_required
 @test_token_required
 def getlist(userid):
+	from web.asynchro import fetch_episode_image
+
 	episodes = fetch_query(
 		"""
 		SELECT
@@ -48,7 +50,7 @@ def getlist(userid):
 		(userid,)
 	)
 	for e in episodes:
-		tvdb.fetch_episode_image.delay(e['tvdb_id'])
+		fetch_episode_image.delay(e['tvdb_id'])
 		e['image'] = tvdb.episode_image(e['tvdb_id'])
 		del e['tvdb_id']
 

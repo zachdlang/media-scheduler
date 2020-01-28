@@ -2,4 +2,3 @@ __pycache__
 .venv
 
 web/config.py
-web/static/images/*.jpg
