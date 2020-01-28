@@ -42,13 +42,17 @@ def login() -> str:
 	return resp['token']
 
 
-def _send_request(endpoint: str, params: dict, token: str = None) -> any:
+def _send_request(
+	endpoint: str,
+	params: dict = None,
+	token: str = None
+) -> any:
 	if token is None:
 		token = login()
 	headers = get_headers()
-	headers['Authorization'] = 'Bearer {}'.format(token)
+	headers['Authorization'] = f'Bearer {token}'
 	r = requests.get(
-		'https://api.thetvdb.com{}'.format(endpoint),
+		f'https://api.thetvdb.com{endpoint}',
 		params=params,
 		headers=headers
 	).text
@@ -76,7 +80,7 @@ def episode_search(
 	params = {'firstAired': airdate}
 	try:
 		resp = _send_request(
-			'/series/{}/episodes/query'.format(tvshow_tvdb_id),
+			f'/series/{tvshow_tvdb_id}/episodes/query',
 			params,
 			token=token
 		)
@@ -88,25 +92,28 @@ def episode_search(
 	return resp['data']
 
 
-def image_search(tvshow_tvdb_id: int) -> list:
-	params = {'keyType': 'poster'}
-	resp = _send_request('/series/{}/images/query'.format(tvshow_tvdb_id), params)
-	return resp['data']
-
-
 def get_poster(tvdb_id: int) -> Response:
-	filename = get_static_file('/images/poster_{}.jpg'.format(tvdb_id))
+	filename = get_static_file(f'/img/upload/poster_{tvdb_id}.jpg')
 	if not os.path.exists(filename):
 		try:
-			resp = image_search(tvdb_id)
+			params = {'keyType': 'poster'}
+			resp = _send_request(f'/series/{tvdb_id}/images/query', params)['data']
 		except TVDBException as e:
 			print(e)
 			return None
 		if len(resp) > 0:
-			top_poster = resp[0]
+			top_poster = resp[0]['fileName']
 			for r in resp:
 				if r['ratingsInfo']['average'] > top_poster['ratingsInfo']['average']:
-					top_poster = r
-		url = 'http://thetvdb.com/banners/{}'.format(top_poster['fileName'])
+					top_poster = r['fileName']
+		url = f'http://thetvdb.com/banners/{top_poster}'
 		fetch_image(filename, url)
-	return serve_static_file('images/poster_{}.jpg'.format(tvdb_id))
+	return serve_static_file(f'img/upload/poster_{tvdb_id}.jpg')
+
+
+def episode_image_filename(tvdb_id: int) -> Response:
+	return get_static_file(f'/img/upload/episode_{tvdb_id}.jpg')
+
+
+def episode_image(tvdb_id: int) -> Response:
+	return serve_static_file(f'img/upload/episode_{tvdb_id}.jpg')

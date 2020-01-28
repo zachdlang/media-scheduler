@@ -12,13 +12,11 @@ from sentry_sdk.integrations.celery import CeleryIntegration
 from sentry_sdk.integrations.redis import RedisIntegration
 
 # Local imports
-from web import tvdb, moviedb, config
+from web import moviedb, config, tvdb
 from flasktools import (
-	handle_exception, params_to_dict, strip_unicode_characters,
-	serve_static_file
+	handle_exception, params_to_dict, serve_static_file
 )
 from flasktools.auth import is_logged_in, check_login, login_required
-from flasktools.celery import setup_celery
 from flasktools.db import disconnect_database, fetch_query, mutate_query
 
 
@@ -36,7 +34,6 @@ app = Flask(__name__)
 
 app.secret_key = config.SECRETKEY
 
-celery = setup_celery(app)
 
 app.jinja_env.globals.update(is_logged_in=is_logged_in)
 app.jinja_env.globals.update(static_file=serve_static_file)
@@ -360,6 +357,8 @@ def movies_follow() -> Response:
 @app.route('/shows/update', methods=['GET'])
 @app.route('/shows/update/<int:tvshowid>', methods=['GET'])
 def shows_update(tvshowid: int = None) -> Response:
+	from web.asynchro import resync_tvshow
+
 	error = None
 
 	if tvshowid is not None:
@@ -396,90 +395,11 @@ def shows_update(tvshowid: int = None) -> Response:
 	return jsonify(error=error)
 
 
-@celery.task(queue='scheduler')
-def resync_tvshow(airdate: str, tvshow: dict, tvdb_token: str) -> None:
-	print('Checking date {} for {}'.format(airdate, tvshow['name']))
-	resp = tvdb.episode_search(tvshow['tvdb_id'], airdate, token=tvdb_token)
-	if resp:
-		print('Found for %s' % tvshow['name'])
-		for r in resp:
-			if r['episodeName'] is None:
-				r['episodeName'] = 'Season {} Episode {}'.format(
-					r['airedSeason'], r['airedEpisodeNumber']
-				)
-			r['episodeName'] = strip_unicode_characters(r['episodeName'])
-
-			existing = fetch_query(
-				"""
-				SELECT
-					*,
-					(airdate - '1 day'::INTERVAL)::DATE::TEXT AS airdate
-				FROM episode
-				WHERE tvdb_id = %s
-				""",
-				(r['id'],),
-				single_row=True
-			)
-			if not existing:
-				# add 1 day to account for US airdates compared to NZ airdates
-				mutate_query(
-					"""
-					INSERT INTO episode (
-						tvshowid, seasonnumber, episodenumber, name, airdate, tvdb_id
-					) VALUES (
-						%s, %s, %s, %s, (%s::DATE + '1 day'::INTERVAL), %s
-					) RETURNING id
-					""",
-					(
-						tvshow['id'],
-						r['airedSeason'],
-						r['airedEpisodeNumber'],
-						strip_unicode_characters(r['episodeName']),
-						r['firstAired'],
-						r['id'],
-					)
-				)
-			else:
-				print('{} episode {} is not new'.format(tvshow['name'], r['id']))
-				# I didn't like the long if statement
-				checkfor = [
-					{'local': existing['name'], 'remote':r['episodeName']},
-					{'local': existing['airdate'], 'remote':r['firstAired']},
-					{'local': existing['seasonnumber'], 'remote':r['airedSeason']},
-					{'local': existing['episodenumber'], 'remote':r['airedEpisodeNumber']}
-				]
-				changed = False
-				for c in checkfor:
-					if str(c['local']) != str(c['remote']):
-						changed = True
-				if changed:
-					print(
-						'{} episode {} has changed'.format(
-							tvshow['name'], existing['name']
-						)
-					)
-					mutate_query(
-						"""
-						UPDATE episode SET
-							name = %s,
-							airdate = (%s::DATE + '1 day'::INTERVAL),
-							seasonnumber = %s,
-							episodenumber = %s
-						WHERE id = %s
-						""",
-						(
-							strip_unicode_characters(r['episodeName']),
-							r['firstAired'],
-							r['airedSeason'],
-							r['airedEpisodeNumber'],
-							existing['id'],
-						)
-					)
-
-
 @app.route('/movies/update', methods=['GET'])
 @app.route('/movies/update/<int:movieid>', methods=['GET'])
 def movies_update(movieid: int = None) -> Response:
+	from web.asynchro import resync_movie
+
 	error = None
 
 	qry = "SELECT *, releasedate::TEXT AS releasedate FROM movie"
@@ -506,33 +426,3 @@ def movies_update(movieid: int = None) -> Response:
 		return redirect(url_for('movies'))
 
 	return jsonify(error=error)
-
-
-@celery.task(queue='scheduler')
-def resync_movie(movie: dict) -> None:
-	print('Resyncing {}'.format(movie['name']))
-	resp = moviedb.get(movie['moviedb_id'])
-	changed = False
-	if movie['name'] != resp['title']:
-		changed = True
-	if movie['releasedate'] is not None:
-		if movie['releasedate'] != resp['release_date']:
-			changed = True
-
-	if changed:
-		print(
-			'"{}" ({}) changed to "{}" ({})'.format(
-				movie['name'],
-				movie['releasedate'],
-				resp['title'],
-				resp['release_date']
-			)
-		)
-		mutate_query(
-			"UPDATE movie SET name = %s, releasedate = %s WHERE id = %s",
-			(resp['title'], resp['release_date'], movie['id'],)
-		)
-
-
-if __name__ == '__main__':
-	app.run()
