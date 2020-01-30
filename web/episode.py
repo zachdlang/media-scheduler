@@ -1,9 +1,9 @@
 # Third party imports
-from flask import Blueprint, jsonify
+from flask import Blueprint, jsonify, Response
 
 # Local imports
 from web import tvdb
-from flasktools.db import fetch_query
+from flasktools.db import fetch_query, mutate_query
 from flasktools.auth.oauth import auth_token_required, generate_auth_token
 
 bp = Blueprint('episodes', __name__)
@@ -22,7 +22,7 @@ def test_token_required(f):
 @bp.route('/list', methods=['GET'])
 # @auth_token_required
 @test_token_required
-def getlist(userid):
+def getlist(userid: int) -> Response:
 	from web.asynchro import fetch_episode_image
 
 	episodes = fetch_query(
@@ -55,3 +55,14 @@ def getlist(userid):
 		del e['tvdb_id']
 
 	return jsonify(episodes)
+
+
+@bp.route('/<int:episodeid>', methods=['PUT'])
+# @auth_token_required
+@test_token_required
+def mark_watched(userid: int, episodeid: int) -> Response:
+	mutate_query(
+		"SELECT mark_episode_watched(%s, %s)",
+		(userid, episodeid,)
+	)
+	return jsonify()
