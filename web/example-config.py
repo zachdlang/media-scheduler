@@ -8,10 +8,11 @@ DBNAME = 'collector'
 DBUSER = 'postgres'
 DBPASS = 'password'
 
-SENTRY_DSN = 'sentrydsn'
-CELERY_SENTRY_DSN = 'celerysentrydsn'
+CELERY_BACKEND = 'redis://'
+CELERY_BROKER = 'redis://localhost:6379/0'
 
-TO_EMAIL = 'admin@email.com'
-FROM_EMAIL = 'no-reply@email.com'
+SENTRY_DSN = 'sentrydsn'
 
 SECRETKEY = 'secretkey'
+
+OAUTH_NAME = 'media-scheduler-api'
