@@ -13,6 +13,7 @@ from sentry_sdk.integrations.redis import RedisIntegration
 
 # Local imports
 from web import moviedb, config, tvdb
+from web.auth import bp as auth_bp
 from web.episode import bp as episode_bp
 from flasktools import (
 	handle_exception, params_to_dict, serve_static_file
@@ -35,6 +36,7 @@ app = Flask(__name__)
 
 app.secret_key = config.SECRETKEY
 
+app.register_blueprint(auth_bp, url_prefix='/auth')
 app.register_blueprint(episode_bp, url_prefix='/episode')
 
 app.jinja_env.globals.update(is_logged_in=is_logged_in)
