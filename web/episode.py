@@ -4,24 +4,13 @@ from flask import Blueprint, jsonify, Response
 # Local imports
 from web import tvdb
 from flasktools.db import fetch_query, mutate_query
-from flasktools.auth.oauth import auth_token_required, generate_auth_token
+from flasktools.auth.oauth import auth_token_required
 
 bp = Blueprint('episodes', __name__)
 
 
-# TODO: Replace this with usage of auth_token_required
-def test_token_required(f):
-	from functools import wraps
-	@wraps(f)
-	def decorated_function(*args, **kwargs):
-		return f(1, *args, **kwargs)
-
-	return decorated_function
-
-
 @bp.route('/list', methods=['GET'])
-# @auth_token_required
-@test_token_required
+@auth_token_required
 def getlist(userid: int) -> Response:
 	from web.asynchro import fetch_episode_image
 
@@ -58,8 +47,7 @@ def getlist(userid: int) -> Response:
 
 
 @bp.route('/<int:episodeid>', methods=['PUT'])
-# @auth_token_required
-@test_token_required
+@auth_token_required
 def mark_watched(userid: int, episodeid: int) -> Response:
 	mutate_query(
 		"SELECT mark_episode_watched(%s, %s)",
