@@ -8,7 +8,7 @@ from flasktools.auth.oauth import generate_auth_token
 bp = Blueprint('auth', __name__)
 
 
-@bp.route('/', methods=['POST'])
+@bp.route('', methods=['POST'])
 def login():
 	params = params_to_dict(request.json)
 
