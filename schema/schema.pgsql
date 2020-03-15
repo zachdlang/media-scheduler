@@ -2,7 +2,7 @@
 CREATE TABLE IF NOT EXISTS tvshow (
 	id SERIAL primary key,
 	name TEXT NOT NULL,
-	tvdb_id INTEGER NOT NULL
+	moviedb_id INTEGER NOT NULL
 )WITH OIDS;
 
 CREATE TABLE IF NOT EXISTS episode (
@@ -12,7 +12,7 @@ CREATE TABLE IF NOT EXISTS episode (
 	episodenumber INTEGER NOT NULL,
 	name TEXT NOT NULL,
 	airdate DATE NOT NULL,
-	tvdb_id INTEGER NOT NULL
+	moviedb_id INTEGER NOT NULL
 )WITH OIDS;
 
 CREATE TABLE IF NOT EXISTS watcher_tvshow (
