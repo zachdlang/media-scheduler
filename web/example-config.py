@@ -1,5 +1,4 @@
 
-TVDB_APIKEY = '1234567890ABCDEF'
 MOVIEDB_APIKEY = 'apikey'
 
 DBHOST = 'localhost'

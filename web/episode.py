@@ -2,7 +2,7 @@
 from flask import Blueprint, jsonify, Response
 
 # Local imports
-from web import tvdb
+from web import moviedb
 from flasktools.db import fetch_query, mutate_query
 from flasktools.auth.oauth import auth_token_required
 
@@ -21,7 +21,7 @@ def getlist(userid: int) -> Response:
 			e.seasonnumber,
 			e.episodenumber,
 			e.name,
-			e.tvdb_id AS tvdb_id,
+			s.moviedb_id AS show_moviedb_id,
 			s.name AS show_name,
 			to_char(e.airdate, 'Day DD/MM/YYYY') AS airdate_str
 		FROM
@@ -39,9 +39,18 @@ def getlist(userid: int) -> Response:
 		(userid,)
 	)
 	for e in episodes:
-		fetch_episode_image.delay(e['tvdb_id'])
-		e['image'] = tvdb.episode_image(e['tvdb_id'])
-		del e['tvdb_id']
+		fetch_episode_image.delay(
+			e['show_moviedb_id'],
+			e['seasonnumber'],
+			e['episodenumber']
+		)
+		e['image'] = moviedb.get_episode_static(
+			e['show_moviedb_id'],
+			e['seasonnumber'],
+			e['episodenumber']
+		)
+		print(e['image'])
+		del e['show_moviedb_id']
 
 	return jsonify(episodes)
 

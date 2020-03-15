@@ -1,5 +1,5 @@
 # Standard library imports
-from datetime import datetime, timedelta
+from datetime import datetime
 
 # Third party imports
 from flask import (
@@ -12,7 +12,7 @@ from sentry_sdk.integrations.celery import CeleryIntegration
 from sentry_sdk.integrations.redis import RedisIntegration
 
 # Local imports
-from web import moviedb, config, tvdb
+from web import moviedb, config
 from web.auth import bp as auth_bp
 from web.episode import bp as episode_bp
 from flasktools import (
@@ -99,7 +99,7 @@ def home() -> Response:
 			e.id, e.seasonnumber,
 			e.episodenumber, e.name,
 			s.name AS show_name,
-			s.tvdb_id AS show_tvdb_id,
+			s.moviedb_id AS show_moviedb_id,
 			to_char(e.airdate, 'Day DD/MM/YYYY') AS airdate_str,
 			e.airdate < current_date AS in_past
 		FROM episode e
@@ -114,7 +114,7 @@ def home() -> Response:
 	for e in episodes:
 		if e['in_past'] is False and e['airdate_str'] not in dates:
 			dates.append(e['airdate_str'])
-		e['poster'] = tvdb.get_poster(e['show_tvdb_id'])
+		e['poster'] = moviedb.get_tvshow_poster(e['show_moviedb_id'])
 		if not e['poster']:
 			e['poster'] = serve_static_file('img/placeholder.jpg')
 	return render_template(
@@ -153,7 +153,7 @@ def shows_list() -> Response:
 	shows = fetch_query(
 		"""
 		SELECT
-			id, tvdb_id, name
+			id, moviedb_id, name
 		FROM tvshow
 		WHERE follows_tvshow(%s, id)
 		ORDER BY name ASC
@@ -161,11 +161,12 @@ def shows_list() -> Response:
 		(session['userid'],)
 	)
 	for s in shows:
-		s['poster'] = tvdb.get_poster(s['tvdb_id'])
+		s['poster'] = moviedb.get_tvshow_poster(s['moviedb_id'])
 		if not s['poster']:
 			s['poster'] = serve_static_file('img/placeholder.jpg')
 		s['update_url'] = url_for('shows_update', tvshowid=s['id'])
-		del s['tvdb_id']
+		del s['moviedb_id']
+
 	return jsonify(shows=shows)
 
 
@@ -177,15 +178,15 @@ def shows_search() -> Response:
 	params = params_to_dict(request.args)
 	search = params.get('search')
 	if search:
-		resp = tvdb.series_search(search)
+		resp = moviedb.search_tvshows(search)
 		for r in resp:
 			year = None
-			if r['firstAired']:
-				year = datetime.strptime(r['firstAired'], '%Y-%m-%d').year
+			if r['first_air_date']:
+				year = datetime.strptime(r['first_air_date'], '%Y-%m-%d').year
 			result.append({
 				'id': r['id'],
-				'name': r['seriesName'],
-				'banner': r['banner'],
+				'name': r['original_name'],
+				'country': r['origin_country'][0],
 				'year': year
 			})
 	return jsonify(error=error, result=result)
@@ -196,25 +197,25 @@ def shows_search() -> Response:
 def shows_follow() -> Response:
 	error = None
 	params = params_to_dict(request.form)
-	tvdb_id = params.get('tvdb_id')
+	moviedb_id = params.get('moviedb_id')
 	name = params.get('name')
-	if tvdb_id and name:
+	if moviedb_id and name:
 		tvshow = fetch_query(
-			"SELECT id FROM tvshow WHERE tvdb_id = %s",
-			(tvdb_id,),
+			"SELECT id FROM tvshow WHERE moviedb_id = %s",
+			(moviedb_id,),
 			single_row=True
 		)
 		if not tvshow:
 			tvshow = mutate_query(
-				"INSERT INTO tvshow (name, tvdb_id) VALUES (%s, %s) RETURNING id",
-				(name, tvdb_id,),
+				"INSERT INTO tvshow (name, moviedb_id) VALUES (%s, %s) RETURNING id",
+				(name, moviedb_id,),
 				returning=True
 			)
 		mutate_query(
 			"SELECT add_watcher_tvshow(%s, %s)",
 			(session['userid'], tvshow['id'],)
 		)
-		tvdb.get_poster(tvdb_id)
+		moviedb.get_tvshow_poster(moviedb_id)
 	else:
 		error = 'Please select a show.'
 	return jsonify(error=error)
@@ -266,7 +267,7 @@ def movies_list() -> Response:
 			dates.append({'date': m['releasedate_str']})
 		elif m['in_past'] is True:
 			outstanding.append(m)
-		m['poster'] = moviedb.get_poster(m['moviedb_id'])
+		m['poster'] = moviedb.get_movie_poster(m['moviedb_id'])
 		if not m['poster']:
 			m['poster'] = serve_static_file('img/placeholder.jpg')
 		m['update_url'] = url_for('movies_update', movieid=m['id'])
@@ -306,7 +307,7 @@ def movies_search() -> Response:
 	params = params_to_dict(request.args)
 	search = params.get('search')
 	if search:
-		resp = moviedb.search(search)
+		resp = moviedb.search_movies(search)
 		for r in resp:
 			year = None
 			if r['release_date']:
@@ -352,7 +353,7 @@ def movies_follow() -> Response:
 			"SELECT add_watcher_movie(%s, %s)",
 			(session['userid'], movie['id'],)
 		)
-		moviedb.get_poster(moviedb_id)
+		moviedb.get_movie_poster(moviedb_id)
 	else:
 		error = 'Please select a show.'
 	return jsonify(error=error)
@@ -367,7 +368,7 @@ def shows_update(tvshowid: int = None) -> Response:
 
 	if tvshowid is not None:
 		tvshows = fetch_query(
-			"SELECT id, name, tvdb_id FROM tvshow WHERE id = %s",
+			"SELECT id, name, moviedb_id FROM tvshow WHERE id = %s",
 			(tvshowid,)
 		)
 	else:
@@ -375,7 +376,7 @@ def shows_update(tvshowid: int = None) -> Response:
 		tvshows = fetch_query(
 			"""
 			SELECT
-				id, name, tvdb_id
+				id, name, moviedb_id
 			FROM tvshow
 			WHERE exists(
 				SELECT * FROM watcher_tvshow WHERE tvshowid = tvshow.id
@@ -383,18 +384,13 @@ def shows_update(tvshowid: int = None) -> Response:
 			"""
 		)
 
-	tvdb_token = tvdb.login()
-
-	for n in range(0, 31):
-		# minus 1 day to account for US airdates compared to NZ airdates
-		airdate = (datetime.today() + timedelta(days=n - 1)).strftime('%Y-%m-%d')
-		for s in tvshows:
-			resync_tvshow.delay(airdate, s, tvdb_token)
+	for s in tvshows:
+		resync_tvshow.delay(s)
 
 	# with tvshowid parameter, is being called from page instead of cron
-	if tvshowid is not None:
-		flash('Updating episodes.', 'success')
-		return redirect(url_for('home'))
+	# if tvshowid is not None:
+	# 	flash('Updating episodes.', 'success')
+	# 	return redirect(url_for('home'))
 
 	return jsonify(error=error)
 
