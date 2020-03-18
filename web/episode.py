@@ -1,5 +1,9 @@
+# Standard library imports
+from datetime import datetime, time
+
 # Third party imports
 from flask import Blueprint, jsonify, Response
+import pytz
 
 # Local imports
 from web import moviedb
@@ -23,7 +27,8 @@ def getlist(userid: int) -> Response:
 			e.name,
 			s.moviedb_id AS show_moviedb_id,
 			s.name AS show_name,
-			to_char(e.airdate, 'Day DD/MM/YYYY') AS airdate_str
+			s.country,
+			e.airdate
 		FROM
 			episode e
 		LEFT JOIN
@@ -39,6 +44,19 @@ def getlist(userid: int) -> Response:
 		(userid,)
 	)
 	for e in episodes:
+		if e['country'] is not None:
+			# Convert to user timezone
+			tz = pytz.timezone(pytz.country_timezones[e['country']][0])
+			# Hardcode at 8PM, as moviedb doesn't store airtimes
+			dt = datetime.combine(e['airdate'], time(20))
+			localized = tz.localize(dt)
+			# TODO: pull this from user config
+			e['airdate'] = localized.astimezone(pytz.timezone('Pacific/Auckland'))
+
+		e['in_past'] = e['airdate'].date() < datetime.today().date()
+		# TODO: pull this from user config
+		e['airdate'] = datetime.strftime(e['airdate'], '%d/%m/%Y')
+
 		fetch_episode_image.delay(
 			e['show_moviedb_id'],
 			e['seasonnumber'],
