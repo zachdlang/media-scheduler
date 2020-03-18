@@ -29,6 +29,19 @@ def _request(endpoint: str, params: dict = None) -> any:
 	return resp
 
 
+def _parse_tvshow(item):
+	"""
+	Make sure expected keys exist, and figure out country.
+	"""
+	item['first_air_date'] = item.get('first_air_date')
+	item['country'] = None
+	if len(item['origin_country']) > 0:
+		# Use first country of origin
+		item['country'] = item['origin_country'][0]
+	del item['origin_country']
+	return item
+
+
 def _search(category: str, name: str) -> list:
 	params = {'query': name}
 	resp = _request(f'/search/{category}', params)
@@ -40,7 +53,8 @@ def search_movies(name: str) -> list:
 
 
 def search_tvshows(name: str) -> list:
-	return _search(TVSHOW, name)
+	resp = _search(TVSHOW, name)
+	return [_parse_tvshow(r) for r in resp]
 
 
 def _get(category: str, moviedb_id: int) -> dict:
@@ -53,7 +67,8 @@ def get_movie(moviedb_id: int) -> dict:
 
 
 def get_tvshow(moviedb_id: int) -> dict:
-	return _get(TVSHOW, moviedb_id)
+	resp = _get(TVSHOW, moviedb_id)
+	return _parse_tvshow(resp)
 
 
 def get_tvshow_season(moviedb_id: int, season_number: int) -> dict:
