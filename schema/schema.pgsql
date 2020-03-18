@@ -2,7 +2,8 @@
 CREATE TABLE IF NOT EXISTS tvshow (
 	id SERIAL primary key,
 	name TEXT NOT NULL,
-	moviedb_id INTEGER NOT NULL
+	moviedb_id INTEGER NOT NULL,
+	country TEXT NOT NULL
 )WITH OIDS;
 
 CREATE TABLE IF NOT EXISTS episode (

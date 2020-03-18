@@ -1,11 +1,12 @@
 # Standard library imports
-from datetime import datetime
+from datetime import datetime, time
 
 # Third party imports
 from flask import (
 	send_from_directory, request, session, url_for, redirect,
 	flash, render_template, jsonify, Flask, Response
 )
+import pytz
 import sentry_sdk
 from sentry_sdk.integrations.flask import FlaskIntegration
 from sentry_sdk.integrations.celery import CeleryIntegration
@@ -100,8 +101,8 @@ def home() -> Response:
 			e.episodenumber, e.name,
 			s.name AS show_name,
 			s.moviedb_id AS show_moviedb_id,
-			to_char(e.airdate, 'Day DD/MM/YYYY') AS airdate_str,
-			e.airdate < current_date AS in_past
+			e.airdate,
+			s.country
 		FROM episode e
 		LEFT JOIN tvshow s ON (s.id = e.tvshowid)
 		WHERE follows_episode(%s, e.id)
@@ -109,14 +110,27 @@ def home() -> Response:
 		""",
 		(session['userid'],)
 	)
-	outstanding = any(e['in_past'] is True for e in episodes)
 	dates = []
 	for e in episodes:
-		if e['in_past'] is False and e['airdate_str'] not in dates:
-			dates.append(e['airdate_str'])
+		if e['country'] is not None:
+			# Convert to user timezone
+			tz = pytz.timezone(pytz.country_timezones[e['country']][0])
+			# Hardcode at 8PM, as moviedb doesn't store airtimes
+			dt = datetime.combine(e['airdate'], time(20))
+			localized = tz.localize(dt)
+			# TODO: pull this from user config
+			e['airdate'] = localized.astimezone(pytz.timezone('Pacific/Auckland'))
+
+		e['in_past'] = e['airdate'].date() < datetime.today().date()
+		# TODO: pull this from user config
+		e['airdate'] = datetime.strftime(e['airdate'], '%d/%m/%Y')
+		if e['in_past'] is False and e['airdate'] not in dates:
+			dates.append(e['airdate'])
 		e['poster'] = moviedb.get_tvshow_poster(e['show_moviedb_id'])
 		if not e['poster']:
 			e['poster'] = serve_static_file('img/placeholder.jpg')
+
+	outstanding = any(e['in_past'] is True for e in episodes)
 	return render_template(
 		'schedule.html',
 		outstanding=outstanding,
@@ -186,7 +200,7 @@ def shows_search() -> Response:
 			result.append({
 				'id': r['id'],
 				'name': r['original_name'],
-				'country': r['origin_country'][0],
+				'country': r['country'],
 				'year': year
 			})
 	return jsonify(error=error, result=result)
@@ -198,17 +212,23 @@ def shows_follow() -> Response:
 	error = None
 	params = params_to_dict(request.form)
 	moviedb_id = params.get('moviedb_id')
-	name = params.get('name')
-	if moviedb_id and name:
+	if moviedb_id:
 		tvshow = fetch_query(
 			"SELECT id FROM tvshow WHERE moviedb_id = %s",
 			(moviedb_id,),
 			single_row=True
 		)
 		if not tvshow:
+			resp = moviedb.get_tvshow(moviedb_id)
 			tvshow = mutate_query(
-				"INSERT INTO tvshow (name, moviedb_id) VALUES (%s, %s) RETURNING id",
-				(name, moviedb_id,),
+				"""
+				INSERT INTO tvshow (
+					name, country, moviedb_id
+				) VALUES (
+					%s, %s, %s
+				) RETURNING id
+				""",
+				(resp['name'], resp['country'], moviedb_id,),
 				returning=True
 			)
 		mutate_query(
@@ -329,15 +349,14 @@ def movies_follow() -> Response:
 	error = None
 	params = params_to_dict(request.form)
 	moviedb_id = params.get('moviedb_id')
-	name = params.get('name')
-	releasedate = params.get('releasedate')
-	if moviedb_id and name:
+	if moviedb_id:
 		movie = fetch_query(
 			"SELECT * FROM movie WHERE moviedb_id = %s",
 			(moviedb_id,),
 			single_row=True
 		)
 		if not movie:
+			resp = moviedb.get_movie(moviedb_id)
 			movie = mutate_query(
 				"""
 				INSERT INTO movie (
@@ -346,7 +365,7 @@ def movies_follow() -> Response:
 					%s, %s, %s
 				) RETURNING id
 				""",
-				(name, releasedate, moviedb_id,),
+				(resp['title'], resp['release_date'], moviedb_id,),
 				returning=True
 			)
 		mutate_query(

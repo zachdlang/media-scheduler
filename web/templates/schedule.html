@@ -1,7 +1,10 @@
 {% extends 'base.html' %}
 
 {% macro gen_episode(e) -%}
-	<div class="show col-xs-12 col-sm-6" data-episodeid="{{ e.id }}">
+	<div
+		class="show col-xs-12 col-sm-6"
+		data-episodeid="{{ e.id }}"
+	>
 		<div class="inner-show well col-xs-12">
 			<img
 				class="poster img-responsive col-xs-3"
@@ -52,7 +55,7 @@
 {% for d in dates %}
 	<div class="date col-xs-12">
 		<h4>{{ d }}</h4>
-		{% for e in episodes if e.airdate_str == d %}
+		{% for e in episodes if e.airdate == d %}
 			{{ gen_episode(e) }}
 		{% endfor %}
 	</div>
