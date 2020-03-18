@@ -1,7 +1,10 @@
 {% extends 'base.html' %}
 
 {% macro gen_episode(e) -%}
-	<div class="show col-xs-12 col-sm-6" data-episodeid="{{ e.id }}">
+	<div
+		class="show col-xs-12 col-sm-6"
+		data-episodeid="{{ e.id }}"
+	>
 		<div class="inner-show well col-xs-12">
 			<img
 				class="poster img-responsive col-xs-3"

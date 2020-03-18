@@ -7,10 +7,7 @@ function followSearch() {
 				compileHandlebars('search-result-template', '#follow_search_result', data);
 				$('#follow_search_result').removeClass('hidden');
 				$('.search-result').on('click', function() {
-					followShow(
-						$(this).data().moviedb_id,
-						$(this).data().name
-					);
+					followShow($(this).data().moviedb_id);
 				});
 			}
 		);
@@ -48,10 +45,10 @@ function unfollowShow(tvshowid) {
 	);
 }
 
-function followShow(moviedb_id, name) {
+function followShow(moviedb_id) {
 	postRequest(
 		'/shows/follow',  // shows_follow
-		{ moviedb_id: moviedb_id, name: name },
+		{ moviedb_id: moviedb_id },
 		function() {
 			getShows();
 			showSuccess('Successfully added.');

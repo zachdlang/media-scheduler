@@ -179,10 +179,11 @@ def shows_search() -> Response:
 			year = None
 			if r['first_air_date']:
 				year = datetime.strptime(r['first_air_date'], '%Y-%m-%d').year
+			country = r['origin_country'][0] if r['origin_country'] else None
 			result.append({
 				'id': r['id'],
 				'name': r['original_name'],
-				'country': r['origin_country'][0],
+				'country': country,
 				'year': year
 			})
 	return jsonify(error=error, result=result)
@@ -194,17 +195,24 @@ def shows_follow() -> Response:
 	error = None
 	params = params_to_dict(request.form)
 	moviedb_id = params.get('moviedb_id')
-	name = params.get('name')
-	if moviedb_id and name:
+	if moviedb_id:
 		tvshow = fetch_query(
 			"SELECT id FROM tvshow WHERE moviedb_id = %s",
 			(moviedb_id,),
 			single_row=True
 		)
 		if not tvshow:
+			resp = moviedb.get_tvshow(moviedb_id)
+			country = resp['origin_country'][0] if resp['origin_country'] else None
 			tvshow = mutate_query(
-				"INSERT INTO tvshow (name, moviedb_id) VALUES (%s, %s) RETURNING id",
-				(name, moviedb_id,),
+				"""
+				INSERT INTO tvshow (
+					name, country, moviedb_id
+				) VALUES (
+					%s, %s, %s
+				) RETURNING id
+				""",
+				(resp['name'], country, moviedb_id,),
 				returning=True
 			)
 		mutate_query(
@@ -325,15 +333,14 @@ def movies_follow() -> Response:
 	error = None
 	params = params_to_dict(request.form)
 	moviedb_id = params.get('moviedb_id')
-	name = params.get('name')
-	releasedate = params.get('releasedate')
-	if moviedb_id and name:
+	if moviedb_id:
 		movie = fetch_query(
 			"SELECT * FROM movie WHERE moviedb_id = %s",
 			(moviedb_id,),
 			single_row=True
 		)
 		if not movie:
+			resp = moviedb.get_movie(moviedb_id)
 			movie = mutate_query(
 				"""
 				INSERT INTO movie (
@@ -342,7 +349,7 @@ def movies_follow() -> Response:
 					%s, %s, %s
 				) RETURNING id
 				""",
-				(name, releasedate, moviedb_id,),
+				(resp['title'], resp['release_date'], moviedb_id,),
 				returning=True
 			)
 		mutate_query(

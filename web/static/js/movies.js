@@ -7,7 +7,7 @@ function followSearch() {
 				compileHandlebars('search-result-template', '#follow_search_result', data);
 				$('#follow_search_result').removeClass('hidden');
 				$('.search-result').on('click', function() {
-					followMovie($(this));
+					followMovie($(this).data().moviedb_id);
 				});
 			}
 		);
@@ -29,11 +29,9 @@ function getMovies() {
 	);
 }
 
-function followMovie(elem) {
+function followMovie(moviedb_id) {
 	var data = {
-		moviedb_id: elem.data().moviedb_id,
-		name: elem.data().name,
-		releasedate: elem.data().releasedate
+		moviedb_id: moviedb_id,
 	};
 
 	postRequest(
