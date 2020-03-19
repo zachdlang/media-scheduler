@@ -1,2 +1,2 @@
 0 14 * * * wget --quiet -O /dev/null https://scheduler.zachlang.com/movies/update
-0 15 * * * wget --quiet -O /dev/null https://scheduler.zachlang.com/shows/update
+0 * * * * wget --quiet -O /dev/null https://scheduler.zachlang.com/shows/update
