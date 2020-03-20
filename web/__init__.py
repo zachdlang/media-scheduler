@@ -123,7 +123,7 @@ def home() -> Response:
 
 		e['in_past'] = e['airdate'].date() < datetime.today().date()
 		# TODO: pull this from user config
-		e['airdate'] = datetime.strftime(e['airdate'], '%d/%m/%Y')
+		e['airdate'] = datetime.strftime(e['airdate'], '%A %d/%m/%Y')
 		if e['in_past'] is False and e['airdate'] not in dates:
 			dates.append(e['airdate'])
 		e['poster'] = moviedb.get_tvshow_poster(e['show_moviedb_id'])
