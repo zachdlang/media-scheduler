@@ -55,7 +55,7 @@ def getlist(userid: int) -> Response:
 
 		e['in_past'] = e['airdate'].date() < datetime.today().date()
 		# TODO: pull this from user config
-		e['airdate'] = datetime.strftime(e['airdate'], '%d/%m/%Y')
+		e['airdate'] = datetime.strftime(e['airdate'], '%A %d/%m/%Y')
 
 		fetch_episode_image.delay(
 			e['show_moviedb_id'],
