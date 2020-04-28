@@ -81,7 +81,7 @@ def resync_movie(movie: dict) -> None:
 	resp = moviedb.get_movie(movie['moviedb_id'])
 	changed = False
 	newname = resp['title']
-	newreleasedate = resp['release_date']
+	newreleasedate = resp['release_date'] or None
 
 	if name != newname:
 		changed = True
