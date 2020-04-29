@@ -7,8 +7,7 @@ DBNAME = 'collector'
 DBUSER = 'postgres'
 DBPASS = 'password'
 
-SENTRY_DSN = 'sentrydsn'
-CELERY_SENTRY_DSN = 'celerysentrydsn'
+ROLLBAR_TOKEN = 'rollbartoken'
 
 TO_EMAIL = 'admin@email.com'
 FROM_EMAIL = 'no-reply@email.com'
