@@ -7,8 +7,7 @@ DBNAME = 'collector'
 DBUSER = 'postgres'
 DBPASS = 'password'
 
-CELERY_BACKEND = 'redis://'
-CELERY_BROKER = 'redis://localhost:6379/0'
+ROLLBAR_TOKEN = 'rollbartoken'
 
 SENTRY_DSN = 'sentrydsn'
 

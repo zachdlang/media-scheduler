@@ -1,8 +1,27 @@
-from web import app, moviedb
+from web import app, config, moviedb
 from flasktools.celery import setup_celery
 from flasktools.db import fetch_query, mutate_query
+import rollbar
+from celery.signals import task_failure
 
 celery = setup_celery(app)
+
+
+@task_failure.connect
+def handle_task_failure(**kwargs):
+	if not hasattr(config, 'TESTMODE'):
+		env = 'production' if not hasattr(config, 'TESTMODE') else 'development'
+		rollbar.init(
+			config.ROLLBAR_TOKEN,
+			environment=env
+		)
+
+		def celery_base_data_hook(request, data):
+			data['framework'] = 'celery'
+
+		rollbar.BASE_DATA_HOOK = celery_base_data_hook
+
+		rollbar.report_exc_info(extra_data=kwargs)
 
 
 @celery.task(queue='scheduler')
