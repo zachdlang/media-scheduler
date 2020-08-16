@@ -1,5 +1,5 @@
 from web import app, config, moviedb
-from flasktools.celery import setup_celery
+from flasktools import setup_celery
 from flasktools.db import fetch_query, mutate_query
 import rollbar
 from celery.signals import task_failure
