@@ -59,7 +59,7 @@ def _populate_tvshow_episode(tvshow, season, episode):
 				season,
 				episode['episode_number'],
 				episode['name'],
-				episode['air_date'],
+				episode['air_date'] or None,
 				episode['id'],
 			)
 		)
