@@ -43,7 +43,7 @@ def _populate_tvshow_episode(tvshow, season, episode):
 		single_row=True
 	)
 
-	if not existing:
+	if not existing and episode.get('name'):
 		episodename = format_episode(season, episode['episode_number'])
 		print(f"Inserting {tvshow['name']} {episodename}")
 		mutate_query(
